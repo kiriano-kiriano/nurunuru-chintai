@@ -641,6 +641,18 @@ body::after {
 .fav:focus { outline:none; }
 .pcard { outline:none; }
 
+/* modal fav button */
+.m-fav-btn {
+  flex-shrink:0; width:44px; height:44px; border-radius:50%;
+  background:rgba(244,63,94,.06); border:1.5px solid rgba(244,63,94,.18);
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; line-height:1; cursor:pointer; transition:all .25s;
+  color:#cbd5e1; outline:none; font-family:inherit;
+  box-shadow:0 2px 12px rgba(0,0,0,.08);
+}
+.m-fav-btn:hover { background:rgba(244,63,94,.12); border-color:rgba(244,63,94,.35); color:#f43f5e; transform:scale(1.08); }
+.m-fav-btn.on { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.4); color:#f43f5e; }
+
 /* card body */
 .cbody { padding:20px 20px 18px; }
 .ctitle { font-size:15px; font-weight:900; color:var(--text); margin-bottom:10px; transition:color .2s; line-height:1.3; }
@@ -972,7 +984,7 @@ body::after {
         <span class="fs-val" id="szLbl">20㎡</span>
       </div>
       <button class="fs-search-btn" onclick="doSearch()">
-        niftyで詳細検索
+        ニフティ不動産で検索
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       </button>
     </div>
@@ -1073,7 +1085,10 @@ body::after {
         <div class="mpred-icon"><svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:28px;height:28px"><path d="M20 2 L20.7 5 L23.8 5.8 L20.7 6.6 L20 9.8 L19.3 6.6 L16.2 5.8 L19.3 5Z" fill="#eb6100"/><circle cx="13.5" cy="21.5" r="6" fill="rgba(255,255,255,.96)"/><circle cx="14.5" cy="21.5" r="3.5" fill="#1a8cff"/><circle cx="16.2" cy="19.8" r="1.4" fill="white"/><circle cx="26.5" cy="21.5" r="6" fill="rgba(255,255,255,.96)"/><circle cx="27.5" cy="21.5" r="3.5" fill="#a855f7"/><circle cx="29.2" cy="19.8" r="1.4" fill="white"/><ellipse cx="7.5" cy="27" rx="4" ry="2.5" fill="rgba(255,140,170,.36)"/><ellipse cx="32.5" cy="27" rx="4" ry="2.5" fill="rgba(255,140,170,.36)"/><path d="M16.5 31.5 Q20 35.2 23.5 31.5" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round"/><circle cx="16.5" cy="31.5" r="1.2" fill="rgba(255,255,255,.55)"/><circle cx="23.5" cy="31.5" r="1.2" fill="rgba(255,255,255,.55)"/></svg></div>
         <div><div class="mpred-lbl">AI予測</div><div class="mpred-val" id="mPred"></div></div>
       </div>
-      <h2 class="mtitle" id="mTitle"></h2>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px;">
+        <h2 class="mtitle" id="mTitle" style="margin-bottom:0;flex:1;min-width:0;"></h2>
+        <button class="m-fav-btn" id="mFavBtn" onclick="toggleModalFav()">♡</button>
+      </div>
       <p class="maddr" id="mAddr"></p>
       <div class="mstats">
         <div class="mstat"><div class="mstat-lbl">月額賃料</div><div class="mstat-v" id="mPrice"></div></div>
@@ -1091,7 +1106,7 @@ body::after {
         </a>
       </div>
       <a id="mLink" href="https://myhome.nifty.com/rent/" target="_blank" rel="noopener" style="text-decoration:none">
-        <button class="maction p">✦ niftyで詳細・内見申込</button>
+        <button class="maction p">✦ ニフティ不動産で詳細・内見申込</button>
       </a>
       <button class="maction s" onclick="saveCondition()" style="display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--ai-blue),var(--violet));flex-shrink:0"><svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px"><path d="M20 2 L20.7 5 L23.8 5.8 L20.7 6.6 L20 9.8 L19.3 6.6 L16.2 5.8 L19.3 5Z" fill="#eb6100"/><circle cx="13.5" cy="21.5" r="6" fill="rgba(255,255,255,.96)"/><circle cx="14.5" cy="21.5" r="3.5" fill="#1a8cff"/><circle cx="16.2" cy="19.8" r="1.4" fill="white"/><circle cx="26.5" cy="21.5" r="6" fill="rgba(255,255,255,.96)"/><circle cx="27.5" cy="21.5" r="3.5" fill="#a855f7"/><circle cx="29.2" cy="19.8" r="1.4" fill="white"/><ellipse cx="7.5" cy="27" rx="4" ry="2.5" fill="rgba(255,140,170,.36)"/><ellipse cx="32.5" cy="27" rx="4" ry="2.5" fill="rgba(255,140,170,.36)"/><path d="M16.5 31.5 Q20 35.2 23.5 31.5" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round"/></svg></span>AIに条件を覚えさせる</button>
     </div>
@@ -1554,7 +1569,7 @@ function card(p) {
           <span class="pamt">${p.price}</span>
           <span class="punit">万円/月</span>
         </div>
-        <div class="fav" onclick="event.stopPropagation();toggleFav(this,${p.id})" style="${graphFavorites.includes(p.id)?'color:#f43f5e':''}">${graphFavorites.includes(p.id)?'♥':'♡'}</div>
+        <div class="fav" id="fav_${p.id}" onclick="event.stopPropagation();toggleFav(this,${p.id})" style="${graphFavorites.includes(p.id)?'color:#f43f5e':''}">${graphFavorites.includes(p.id)?'♥':'♡'}</div>
       </div>
     </div>
     <div class="cbody">
@@ -1583,8 +1598,13 @@ function toggleFav(el, pid) {
   localStorage.setItem('nifty_graph_fav', JSON.stringify(graphFavorites));
   el.textContent = on ? '♡' : '♥';
   el.style.color  = on ? '' : '#f43f5e';
+  // モーダルが同じ物件を表示中なら同期
+  const mFavBtn = document.getElementById('mFavBtn');
+  if (mFavBtn && +mFavBtn.dataset.pid === pid) {
+    mFavBtn.textContent = on ? '♡' : '♥';
+    mFavBtn.classList.toggle('on', !on);
+  }
   toast(on ? 'お気に入りから削除しました' : '♥ お気に入りに追加しました！');
-  // グラフを再構築（cat-favノード追加/削除 + ノード色変更）
   initD3Graph();
 }
 
@@ -1698,6 +1718,13 @@ function openModal(id) {
   document.getElementById('mAreaLink').href = areaUrl;
   document.getElementById('mAreaLinkTxt').textContent = p.area;
 
+  // Fav button state
+  const mFavBtn = document.getElementById('mFavBtn');
+  mFavBtn.dataset.pid = p.id;
+  const isFav = graphFavorites.includes(p.id);
+  mFavBtn.textContent = isFav ? '♥' : '♡';
+  mFavBtn.classList.toggle('on', isFav);
+
   document.getElementById('modalOv').classList.add('open');
   document.body.style.overflow = 'hidden';
 
@@ -1714,7 +1741,27 @@ function closeModal(e) {
   }
 }
 
-function saveCondition() { toast('🤖 条件をAIに記憶させました！次回以降、優先的に提案します。'); }
+function toggleModalFav() {
+  const btn = document.getElementById('mFavBtn');
+  const pid = +btn.dataset.pid;
+  const on = graphFavorites.includes(pid);
+  if (on) {
+    graphFavorites = graphFavorites.filter(id => id !== pid);
+  } else {
+    graphFavorites.push(pid);
+  }
+  localStorage.setItem('nifty_graph_fav', JSON.stringify(graphFavorites));
+  const nowFav = graphFavorites.includes(pid);
+  btn.textContent = nowFav ? '♥' : '♡';
+  btn.classList.toggle('on', nowFav);
+  // カードのfavボタンも同期
+  const cardFav = document.getElementById(`fav_${pid}`);
+  if (cardFav) { cardFav.textContent = nowFav ? '♥' : '♡'; cardFav.style.color = nowFav ? '#f43f5e' : ''; }
+  toast(nowFav ? '♥ お気に入りに追加しました！' : 'お気に入りから削除しました');
+  initD3Graph();
+}
+
+function saveCondition() { toast('条件をAIに記憶させました！次回以降、優先的に提案します。'); }
 
 /* ─────────────────────────────────────────────
    CHAT
