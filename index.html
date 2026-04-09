@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
   --bg: #f5f5f5;
@@ -850,6 +852,54 @@ body::after {
   .chip { padding:7px 14px; font-size:11px; }
   .hero-quick-chips { gap:6px; }
 }
+
+/* ──── TAB PANELS ──── */
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* 路線・駅タブ */
+.line-scroll {
+  display:flex; gap:7px; flex-wrap:wrap; justify-content:center;
+  margin-bottom:14px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px;
+}
+.line-scroll::-webkit-scrollbar { display:none; }
+.line-btn {
+  padding:6px 14px; border-radius:20px; border:none; font-size:11px; font-weight:700;
+  cursor:pointer; white-space:nowrap; transition:all .22s; font-family:inherit;
+  opacity:.7; flex-shrink:0; color:#fff;
+}
+.line-btn:hover, .line-btn.on { opacity:1; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.35); }
+.station-grid { display:flex; gap:7px; flex-wrap:wrap; justify-content:center; min-height:56px; align-items:center; }
+.st-chip {
+  padding:7px 15px; border-radius:20px;
+  border:1.5px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.08); backdrop-filter:blur(12px);
+  font-size:11px; font-weight:600; color:rgba(255,255,255,.8);
+  cursor:pointer; transition:all .2s; font-family:inherit;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.15);
+}
+.st-chip:hover { background:rgba(235,97,0,.18); border-color:rgba(235,97,0,.5); color:#fff; }
+.st-chip.on { background:rgba(235,97,0,.28); border-color:var(--primary); color:#fff; box-shadow:0 0 14px rgba(235,97,0,.25); }
+
+/* 地図タブ */
+#leafletMap {
+  width:100%; height:300px; border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.leaflet-popup-content-wrapper {
+  background:rgba(10,18,40,.97) !important;
+  border:1px solid rgba(235,97,0,.3) !important;
+  border-radius:14px !important; color:#f1f5f9 !important;
+  box-shadow:0 12px 40px rgba(0,0,0,.6) !important;
+}
+.leaflet-popup-tip { background:rgba(10,18,40,.97) !important; }
+.leaflet-popup-close-button { color:#94a3b8 !important; top:8px !important; right:10px !important; }
+.leaflet-control-zoom a {
+  background:rgba(10,18,40,.9) !important; color:#f1f5f9 !important;
+  border-color:rgba(255,255,255,.12) !important;
+}
+.leaflet-control-zoom a:hover { background:rgba(235,97,0,.2) !important; }
 </style>
 </head>
 <body>
@@ -934,27 +984,44 @@ body::after {
         </div>
       </div>
       <nav class="hero-tabs">
-        <button class="htab on" onclick="document.querySelectorAll('.htab').forEach(t=>t.classList.remove('on'));this.classList.add('on')">🗺 エリアから</button>
-        <button class="htab" onclick="document.querySelectorAll('.htab').forEach(t=>t.classList.remove('on'));this.classList.add('on')">🚃 沿線から</button>
-        <button class="htab" onclick="document.querySelectorAll('.htab').forEach(t=>t.classList.remove('on'));this.classList.add('on')">📍 地図から</button>
+        <button class="htab on" onclick="showTab('area')">🗺 エリアから</button>
+        <button class="htab" onclick="showTab('line')">🚃 沿線・駅から</button>
+        <button class="htab" onclick="showTab('map')">📍 地図から</button>
       </nav>
-      <div id="chipBar">
-        <button class="chip on" onclick="setArea(null,this)">すべて</button>
-        <button class="chip" onclick="setArea('渋谷区',this)">渋谷区</button>
-        <button class="chip" onclick="setArea('新宿区',this)">新宿区</button>
-        <button class="chip" onclick="setArea('目黒区',this)">目黒区</button>
-        <button class="chip" onclick="setArea('荒川区',this)">荒川区</button>
-        <button class="chip" onclick="setArea('杉並区',this)">杉並区</button>
-        <button class="chip" onclick="setArea('板橋区',this)">板橋区</button>
-        <button class="chip" onclick="setArea('大田区',this)">大田区</button>
+
+      <!-- エリアタブ -->
+      <div id="tab-area" class="tab-panel active">
+        <div id="chipBar">
+          <button class="chip on" onclick="setArea(null,this)">すべて</button>
+          <button class="chip" onclick="setArea('渋谷区',this)">渋谷区</button>
+          <button class="chip" onclick="setArea('新宿区',this)">新宿区</button>
+          <button class="chip" onclick="setArea('目黒区',this)">目黒区</button>
+          <button class="chip" onclick="setArea('荒川区',this)">荒川区</button>
+          <button class="chip" onclick="setArea('杉並区',this)">杉並区</button>
+          <button class="chip" onclick="setArea('板橋区',this)">板橋区</button>
+          <button class="chip" onclick="setArea('大田区',this)">大田区</button>
+        </div>
+        <div class="hero-quick-chips">
+          <button class="s-chip" onclick="useChip('駅徒歩5分以内')">🚶 駅近</button>
+          <button class="s-chip" onclick="useChip('南向き')">☀️ 南向き</button>
+          <button class="s-chip" onclick="useChip('ペット可')">🐱 ペット可</button>
+          <button class="s-chip" onclick="useChip('築10年以内')">🏢 築浅</button>
+          <button class="s-chip" onclick="useChip('在宅ワーク向き')">💻 在宅向き</button>
+          <button class="s-chip" onclick="useChip('デザイナーズ')">✨ デザイナーズ</button>
+        </div>
       </div>
-      <div class="hero-quick-chips">
-        <button class="s-chip" onclick="useChip('駅徒歩5分以内')">🚶 駅近</button>
-        <button class="s-chip" onclick="useChip('南向き')">☀️ 南向き</button>
-        <button class="s-chip" onclick="useChip('ペット可')">🐱 ペット可</button>
-        <button class="s-chip" onclick="useChip('築10年以内')">🏢 築浅</button>
-        <button class="s-chip" onclick="useChip('在宅ワーク向き')">💻 在宅向き</button>
-        <button class="s-chip" onclick="useChip('デザイナーズ')">✨ デザイナーズ</button>
+
+      <!-- 沿線・駅タブ -->
+      <div id="tab-line" class="tab-panel">
+        <div class="line-scroll" id="lineScroll"></div>
+        <div class="station-grid" id="stationGrid">
+          <span style="color:rgba(255,255,255,.4);font-size:12px;">路線を選んでください</span>
+        </div>
+      </div>
+
+      <!-- 地図タブ -->
+      <div id="tab-map" class="tab-panel">
+        <div id="leafletMap"></div>
       </div>
     </div>
   </section>
@@ -1635,6 +1702,109 @@ function setArea(area, el) {
   if (gnEl) gnEl.textContent = area ? `${area}で絞り込み中` : 'エリアを選択して物件を絞り込む';
   render(); // calls renderBreadcrumb() inside
   refreshAiMsg();
+}
+
+/* ─────────────────────────────────────────────
+   HERO TABS
+───────────────────────────────────────────── */
+const LINES = [
+  { name:'山手線',     color:'#9acd32', stations:['渋谷','恵比寿','目黒','五反田','大崎','新宿','高田馬場','池袋','上野','日暮里','田端'] },
+  { name:'中央線',     color:'#e15f00', stations:['新宿','大久保','東中野','中野','高円寺','阿佐ヶ谷','荻窪','西荻窪'] },
+  { name:'東急東横線', color:'#e60012', stations:['渋谷','代官山','中目黒','祐天寺','学芸大学','都立大学'] },
+  { name:'小田急線',   color:'#0072bc', stations:['新宿','参宮橋','代々木公園','代々木八幡','代々木上原'] },
+  { name:'京王線',     color:'#004097', stations:['新宿','笹塚','代田橋','明大前','下高井戸','桜上水'] },
+  { name:'東急目黒線', color:'#00ac9b', stations:['目黒','不動前','武蔵小山','西小山','洗足','大岡山'] },
+  { name:'東武東上線', color:'#f67a1e', stations:['池袋','北池袋','下板橋','大山','中板橋','ときわ台'] },
+  { name:'京成線',     color:'#ee0011', stations:['日暮里','新三河島','町屋','千住大橋','京成関屋'] },
+  { name:'東急池上線', color:'#c8b400', stations:['五反田','大崎広小路','戸越銀座','荏原中延','蒲田'] },
+  { name:'埼京線',     color:'#00a878', stations:['新宿','渋谷','恵比寿','大崎','板橋','北赤羽'] },
+];
+const STATION_AREA = {
+  '渋谷':'渋谷区','恵比寿':'渋谷区','代官山':'渋谷区','代々木公園':'渋谷区',
+  '代々木八幡':'渋谷区','代々木上原':'渋谷区','参宮橋':'渋谷区',
+  '目黒':'目黒区','中目黒':'目黒区','祐天寺':'目黒区','学芸大学':'目黒区',
+  '都立大学':'目黒区','不動前':'目黒区','武蔵小山':'目黒区','西小山':'目黒区',
+  '洗足':'目黒区','大岡山':'目黒区',
+  '新宿':'新宿区','大久保':'新宿区','東中野':'新宿区','高田馬場':'新宿区',
+  '笹塚':'新宿区','代田橋':'新宿区','明大前':'新宿区',
+  '高円寺':'杉並区','阿佐ヶ谷':'杉並区','荻窪':'杉並区','西荻窪':'杉並区',
+  '中野':'杉並区','下高井戸':'杉並区','桜上水':'杉並区',
+  '日暮里':'荒川区','新三河島':'荒川区','町屋':'荒川区','千住大橋':'荒川区',
+  '京成関屋':'荒川区','田端':'荒川区',
+  '池袋':'板橋区','北池袋':'板橋区','下板橋':'板橋区','大山':'板橋区',
+  '中板橋':'板橋区','ときわ台':'板橋区','板橋':'板橋区','北赤羽':'板橋区',
+  '五反田':'大田区','蒲田':'大田区','大崎広小路':'大田区','戸越銀座':'大田区',
+  '荏原中延':'大田区','大崎':'大田区',
+};
+const AREA_COORDS = {
+  '渋谷区':[35.661,139.703],'新宿区':[35.693,139.703],'目黒区':[35.634,139.715],
+  '荒川区':[35.736,139.781],'杉並区':[35.699,139.636],'板橋区':[35.750,139.710],
+  '大田区':[35.561,139.716],
+};
+let _mapInited = false;
+
+function showTab(name) {
+  document.querySelectorAll('.htab').forEach((t,i) =>
+    t.classList.toggle('on', ['area','line','map'][i] === name)
+  );
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'line' && !document.getElementById('lineScroll').children.length) renderLines();
+  if (name === 'map') initLeafletMap();
+}
+
+function renderLines() {
+  document.getElementById('lineScroll').innerHTML = LINES.map((l,i) =>
+    `<button class="line-btn" style="background:${l.color}" onclick="showLineSt(${i})">${l.name}</button>`
+  ).join('');
+}
+
+function showLineSt(idx) {
+  document.querySelectorAll('.line-btn').forEach((b,i) => b.classList.toggle('on', i===idx));
+  const l = LINES[idx];
+  document.getElementById('stationGrid').innerHTML = l.stations.map(s =>
+    `<button class="st-chip" onclick="selectStation('${s}',this)">${s}駅</button>`
+  ).join('');
+}
+
+function selectStation(st, el) {
+  document.querySelectorAll('.st-chip').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  const area = STATION_AREA[st] || null;
+  activeArea = area;
+  // エリアタブのchipも同期
+  document.querySelectorAll('#chipBar .chip').forEach(c =>
+    c.classList.toggle('on', c.textContent === (area || 'すべて'))
+  );
+  render();
+}
+
+function initLeafletMap() {
+  if (_mapInited) return;
+  _mapInited = true;
+  const map = L.map('leafletMap', { zoomControl:true, attributionControl:false })
+    .setView([35.665, 139.703], 12);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    { subdomains:'abcd', maxZoom:19 }).addTo(map);
+  const FACE = `<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px"><circle cx="13.5" cy="21.5" r="6" fill="rgba(255,255,255,.96)"/><circle cx="14.5" cy="21.5" r="3.5" fill="#1a8cff"/><circle cx="16.2" cy="19.8" r="1.4" fill="white"/><circle cx="26.5" cy="21.5" r="6" fill="rgba(255,255,255,.96)"/><circle cx="27.5" cy="21.5" r="3.5" fill="#a855f7"/><circle cx="29.2" cy="19.8" r="1.4" fill="white"/><path d="M16.5 31.5 Q20 35.2 23.5 31.5" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round"/></svg>`;
+  PROPS.forEach(p => {
+    const base = AREA_COORDS[p.area] || [35.665,139.703];
+    const lat = base[0] + Math.sin(p.id*1.7)*0.011;
+    const lng = base[1] + Math.cos(p.id*2.3)*0.011;
+    const icon = L.divIcon({
+      html:`<div style="background:linear-gradient(135deg,#eb6100,#7c3aed);width:34px;height:34px;border-radius:10px;border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px rgba(235,97,0,.55);">${FACE}</div>`,
+      className:'', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20]
+    });
+    L.marker([lat,lng],{icon}).addTo(map).bindPopup(
+      `<div style="min-width:200px;font-family:'Noto Sans JP',sans-serif;">
+        <div style="font-size:10px;font-weight:700;color:#eb6100;letter-spacing:1px;margin-bottom:5px;">AIマッチ ${p.score}%</div>
+        <div style="font-size:14px;font-weight:800;color:#f1f5f9;margin-bottom:4px;line-height:1.3;">${p.title}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">${p.area} · <strong style="color:#f1f5f9">${p.price}万円</strong>/月 · ${p.walk}</div>
+        <button onclick="openModal(${p.id})" style="width:100%;padding:8px;background:linear-gradient(135deg,#eb6100,#f97316);border:none;border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">詳細を見る →</button>
+      </div>`, {maxWidth:270}
+    );
+  });
+  setTimeout(() => map.invalidateSize(), 150);
 }
 
 /* ─────────────────────────────────────────────
