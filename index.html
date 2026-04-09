@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ニフティ不動産AI — AI賃貸検索</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #f5f5f5;
+  --surface: rgba(255,255,255,0.97);
+  --card: #ffffff;
+  --primary: #eb6100;
+  --primary-glow: rgba(235,97,0,0.22);
+  --cyan: #56b3b4;
+  --cyan-glow: rgba(86,179,180,0.22);
+  --ai-blue: #1a8cff;
+  --ai-blue-glow: rgba(26,140,255,0.22);
+  --violet: #7c3aed;
+  --green: #059669;
+  --amber: #d97706;
+  --rose: #e11d48;
+  --orange: #eb6100;
+  --orange-glow: rgba(235,97,0,0.22);
+  --text: #1a1a1a;
+  --muted: #64748b;
+  --border: rgba(0,0,0,0.08);
+  --border-hover: rgba(235,97,0,0.35);
+  --r: 16px;
+  --r-lg: 24px;
+  --r-xl: 36px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'Noto Sans JP','Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  min-height:100vh;
+}
+
+/* ──── SCROLLBAR ──── */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(26,140,255,0.2); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(26,140,255,0.35); }
+
+/* ──── LOADING ──── */
+#loading {
+  position:fixed; inset:0; z-index:9999;
+  background:radial-gradient(ellipse at center, #0f1a36 0%, #060d1f 70%);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;
+  transition:opacity .7s cubic-bezier(.4,0,.2,1), visibility .7s;
+}
+#loading.out { opacity:0; visibility:hidden; }
+/* spinning rings */
+.load-ring {
+  width:90px; height:90px; border-radius:50%; position:relative; flex-shrink:0;
+  border:2.5px solid rgba(235,97,0,.12);
+  border-top:2.5px solid #eb6100; border-right:2.5px solid rgba(235,97,0,.4);
+  animation:spinRing 1s linear infinite;
+}
+.load-ring::before {
+  content:''; position:absolute; inset:10px; border-radius:50%;
+  border:2px solid rgba(26,140,255,.1);
+  border-bottom:2px solid var(--ai-blue);
+  animation:spinRing 1.6s linear infinite reverse;
+}
+.load-ring::after {
+  content:'🏠'; position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; animation:spinRing 3s linear infinite;
+}
+@keyframes spinRing { to { transform:rotate(360deg); } }
+.load-logo {
+  font-family:'Noto Sans JP',sans-serif; font-size:36px; font-weight:900; letter-spacing:-1px;
+  background:linear-gradient(135deg,#eb6100,#f97316,#7c3aed);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  animation:logoPulse 1.5s ease-in-out infinite;
+}
+@keyframes logoPulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.load-bar-wrap { width:220px; height:3px; background:rgba(235,97,0,.15); border-radius:2px; overflow:hidden; }
+.load-bar { height:100%; background:linear-gradient(90deg,#eb6100,#1a8cff,#7c3aed); background-size:200%; animation:loadBar 1.4s ease-out forwards, loadBarShimmer 1.4s linear infinite; }
+@keyframes loadBar { from{width:0} to{width:100%} }
+@keyframes loadBarShimmer { from{background-position:0%} to{background-position:200%} }
+.load-txt {
+  font-size:10px; letter-spacing:4px; color:rgba(255,200,150,.45); text-transform:uppercase;
+}
+
+/* ──── AURORA BACKGROUND ──── */
+#aurora {
+  position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+}
+.blob {
+  position:absolute; border-radius:50%; filter:blur(90px);
+  animation:blobFloat 18s ease-in-out infinite;
+}
+.b1 { width:700px; height:700px; background:rgba(26,140,255,.12); top:-15%; right:-10%; animation-delay:0s; }
+.b2 { width:500px; height:500px; background:rgba(249,115,22,.1); bottom:-10%; left:-5%; animation-delay:-6s; }
+.b3 { width:350px; height:350px; background:rgba(124,58,237,.1); top:40%; left:30%; animation-delay:-12s; }
+@keyframes blobFloat {
+  0%,100%{transform:translate(0,0) scale(1)}
+  33%{transform:translate(40px,-40px) scale(1.07)}
+  66%{transform:translate(-30px,30px) scale(.94)}
+}
+
+/* ──── SCAN LINE ──── */
+.scan-line {
+  position:fixed; left:0; right:0; height:2px; z-index:9998; pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(26,140,255,.35),transparent);
+  animation:scanDown 8s linear infinite;
+}
+@keyframes scanDown { from{top:-2px} to{top:100vh} }
+
+/* ──── SCAN OVERLAY ──── */
+body::after {
+  content:''; position:fixed; inset:0; z-index:9990; pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.006) 3px,rgba(0,0,0,.006) 4px);
+}
+
+/* ──── NEURAL CANVAS ──── */
+#neural { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.18; }
+
+/* ──── LAYOUT ──── */
+.wrap { position:relative; z-index:10; }
+
+/* ──── STATUS BAR ──── */
+.status-bar {
+  display:flex; align-items:center; gap:20px; padding:0 24px; height:34px;
+  background:rgba(6,13,31,0.96); border-bottom:1px solid rgba(26,140,255,.18);
+  font-family:'Inter',monospace; font-size:10px; color:rgba(200,220,255,0.5); letter-spacing:.5px;
+  overflow:hidden;
+}
+.s-dot {
+  width:6px; height:6px; border-radius:50%;
+  animation:blink 1.5s infinite;
+}
+.s-dot.g { background:var(--green); box-shadow:0 0 5px var(--green); }
+.s-dot.c { background:var(--primary); box-shadow:0 0 5px var(--primary); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.s-item { display:flex; align-items:center; gap:7px; }
+.s-ml { margin-left:auto; font-variant-numeric:tabular-nums; }
+
+/* ──── HEADER ──── */
+.header {
+  position:sticky; top:0; z-index:100;
+  backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px);
+  background:rgba(6,13,31,0.94); border-bottom:1px solid rgba(26,140,255,.18);
+  box-shadow:0 2px 28px rgba(0,0,0,.45);
+}
+.header-in {
+  max-width:1440px; margin:0 auto; padding:0 24px;
+  height:68px; display:flex; align-items:center; gap:16px;
+}
+
+.logo { display:flex; align-items:center; gap:12px; text-decoration:none; flex-shrink:0; }
+.logo-icon {
+  width:42px; height:42px; flex-shrink:0;
+  background:linear-gradient(135deg,var(--primary),var(--violet));
+  border-radius:14px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 18px var(--primary-glow);
+  position:relative; overflow:hidden;
+}
+.logo-icon::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(45deg,transparent 30%,rgba(255,255,255,.2) 50%,transparent 70%);
+  animation:shimmer 2.5s ease-in-out infinite;
+}
+@keyframes shimmer { 0%{transform:translateX(-150%)} 100%{transform:translateX(150%)} }
+.logo-txt {
+  font-family:'Noto Sans JP','Inter',sans-serif; font-size:15px; font-weight:900;
+  letter-spacing:0; color:#fff; line-height:1;
+}
+.logo-txt em { color:var(--primary); font-style:normal; }
+
+/* header search */
+.search-wrap { flex:1; position:relative; }
+.search-input {
+  width:100%; height:44px;
+  background:rgba(255,255,255,.07); border:1.5px solid rgba(235,97,0,.2);
+  border-radius:22px; padding:0 56px 0 48px;
+  color:#fff; font-size:14px; font-family:inherit; outline:none;
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+.search-input:focus {
+  background:rgba(255,255,255,.1); border-color:var(--primary);
+  box-shadow:0 0 0 4px rgba(235,97,0,.15);
+}
+.search-input::placeholder { color:rgba(255,210,170,.35); }
+.s-icon-l, .s-icon-r {
+  position:absolute; top:50%; transform:translateY(-50%); pointer-events:none;
+}
+.s-icon-l { left:16px; color:rgba(255,210,170,.4); }
+.s-icon-r { right:14px; }
+.ai-pill {
+  background:linear-gradient(135deg,var(--ai-blue),var(--violet));
+  color:#fff; font-size:10px; font-weight:800; padding:4px 10px;
+  border-radius:12px; letter-spacing:.5px;
+  box-shadow:0 2px 10px var(--ai-blue-glow);
+  animation:pillPulse 2.5s ease-in-out infinite;
+}
+@keyframes pillPulse { 0%,100%{box-shadow:0 2px 10px var(--ai-blue-glow)} 50%{box-shadow:0 4px 22px var(--ai-blue-glow)} }
+
+.search-btn {
+  height:44px; padding:0 22px;
+  background:linear-gradient(135deg,var(--orange),#ea580c);
+  border:none; border-radius:14px; color:#fff;
+  font-size:14px; font-weight:800; font-family:inherit; cursor:pointer;
+  white-space:nowrap; flex-shrink:0;
+  box-shadow:0 4px 18px var(--orange-glow);
+  transition:all .25s;
+}
+.search-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px var(--orange-glow); }
+.search-btn:active { transform:scale(.97); }
+
+/* ──── HERO SECTION ──── */
+.hero {
+  background:linear-gradient(160deg,#060d1f 0%,#0a1228 50%,#0d163a 100%);
+  border-bottom:1px solid rgba(235,97,0,.12);
+  position:relative; overflow:hidden;
+  padding:64px 24px 52px;
+}
+.hero::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background-image:radial-gradient(rgba(235,97,0,.1) 1px,transparent 1px);
+  background-size:36px 36px;
+}
+.hero::after {
+  content:''; position:absolute; top:-200px; left:50%; transform:translateX(-50%);
+  width:900px; height:450px;
+  background:radial-gradient(ellipse,rgba(235,97,0,.12) 0%,rgba(26,140,255,.06) 50%,transparent 70%);
+  pointer-events:none;
+}
+.hero-in {
+  max-width:860px; margin:0 auto; text-align:center;
+  position:relative; z-index:2;
+}
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(235,97,0,.1); border:1px solid rgba(235,97,0,.3);
+  border-radius:20px; padding:6px 18px; margin-bottom:24px;
+  font-size:11px; font-weight:700; letter-spacing:2px; color:#eb6100;
+  text-transform:uppercase;
+  animation:badgePulse 3s ease-in-out infinite;
+}
+@keyframes badgePulse { 0%,100%{box-shadow:0 0 20px rgba(235,97,0,.08)} 50%{box-shadow:0 0 40px rgba(235,97,0,.25)} }
+/* SF warp perspective grid in hero */
+.hero-warp-grid {
+  position:absolute; bottom:0; left:0; right:0; height:60%; pointer-events:none; overflow:hidden;
+  background:
+    linear-gradient(rgba(235,97,0,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(235,97,0,.04) 1px, transparent 1px);
+  background-size:50px 50px;
+  transform:perspective(600px) rotateX(55deg) translateY(30px) scale(1.5);
+  transform-origin:bottom center;
+  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 100%);
+  mask-image:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 100%);
+  animation:warpScroll 4s linear infinite;
+}
+@keyframes warpScroll {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 50px, 0 0; }
+}
+
+.hero-badge-dot {
+  width:7px; height:7px; border-radius:50%; background:var(--primary);
+  box-shadow:0 0 6px var(--primary); animation:blink 1.5s infinite;
+}
+.hero-title {
+  font-size:clamp(30px,5vw,54px); font-weight:900; line-height:1.15;
+  color:#fff; margin-bottom:28px; letter-spacing:-1px;
+}
+.hero-title span {
+  background:linear-gradient(135deg,var(--primary),var(--orange));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+
+/* AI concierge bar in hero */
+.ai-concierge-bar {
+  display:flex; align-items:flex-start; gap:14px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(235,97,0,.25);
+  border-radius:20px; padding:18px 22px; margin-bottom:28px;
+  backdrop-filter:blur(20px); text-align:left;
+  box-shadow:0 8px 40px rgba(0,0,0,.3), 0 0 0 1px rgba(235,97,0,.1), inset 0 1px 0 rgba(255,255,255,.05);
+  animation:conciergeGlow 4s ease-in-out infinite;
+}
+@keyframes conciergeGlow {
+  0%,100%{ box-shadow:0 8px 40px rgba(0,0,0,.3), 0 0 20px rgba(235,97,0,.08), inset 0 1px 0 rgba(255,255,255,.05); border-color:rgba(235,97,0,.25); }
+  33%{     box-shadow:0 8px 40px rgba(0,0,0,.3), 0 0 28px rgba(26,140,255,.15), inset 0 1px 0 rgba(255,255,255,.05); border-color:rgba(26,140,255,.35); }
+  66%{     box-shadow:0 8px 40px rgba(0,0,0,.3), 0 0 28px rgba(124,58,237,.12), inset 0 1px 0 rgba(255,255,255,.05); border-color:rgba(124,58,237,.3); }
+}
+.ai-avatar {
+  width:42px; height:42px; border-radius:14px; flex-shrink:0;
+  background:linear-gradient(135deg,var(--ai-blue),var(--violet));
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+  box-shadow:0 0 24px var(--ai-blue-glow);
+}
+.ai-msg-area { flex:1; min-width:0; }
+.ai-name-row {
+  font-size:10px; font-weight:700; color:rgba(200,220,255,.5);
+  letter-spacing:1px; margin-bottom:6px;
+  display:flex; align-items:center; gap:7px;
+}
+.ai-online-dot {
+  width:6px; height:6px; border-radius:50%; background:var(--green);
+  box-shadow:0 0 5px var(--green); animation:blink 1.5s infinite;
+  display:inline-block;
+}
+#aiMsg {
+  font-size:14px; line-height:1.75; color:rgba(230,240,255,.9);
+  min-height:21px;
+}
+.cursor { display:inline-block; width:2px; height:14px; background:var(--primary); vertical-align:middle; margin-left:2px; animation:cursorBlink 1s infinite; }
+@keyframes cursorBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* hero tab nav */
+.hero-tabs { display:flex; gap:6px; justify-content:center; margin-bottom:22px; flex-wrap:wrap; }
+.htab {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px; padding:10px 24px; font-size:13px; font-weight:700;
+  color:rgba(255,210,170,.65); cursor:pointer; font-family:inherit;
+  transition:all .25s; white-space:nowrap;
+}
+.htab:hover { background:rgba(235,97,0,.12); border-color:rgba(235,97,0,.4); color:#fff; }
+.htab.on {
+  background:rgba(235,97,0,.18); border-color:var(--primary); color:#fff;
+  box-shadow:0 0 20px rgba(235,97,0,.2);
+}
+
+/* chip bar */
+#chipBar { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+.chip {
+  white-space:nowrap; flex-shrink:0;
+  background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:8px 18px;
+  font-size:12px; font-weight:600; color:rgba(255,210,170,.75);
+  cursor:pointer; transition:all .2s; font-family:inherit;
+}
+.chip:hover, .chip.on {
+  background:rgba(235,97,0,.18); border-color:var(--primary); color:#fff;
+  box-shadow:0 0 14px rgba(235,97,0,.25);
+}
+
+/* hero quick AI suggestion chips */
+.hero-quick-chips { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.s-chip {
+  background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.08);
+  border-radius:20px; padding:6px 14px; font-size:11px; font-weight:600;
+  color:rgba(255,210,170,.6); cursor:pointer; transition:all .2s; font-family:inherit;
+}
+.s-chip:hover { background:rgba(235,97,0,.12); border-color:rgba(235,97,0,.4); color:#fff; }
+
+/* ──── FILTER STRIP ──── */
+.filter-strip {
+  position:sticky; top:68px; z-index:90;
+  background:rgba(255,255,255,.97); backdrop-filter:blur(24px);
+  border-bottom:1px solid rgba(26,140,255,.1);
+  box-shadow:0 4px 28px rgba(0,0,0,.08);
+}
+.filter-strip-in {
+  max-width:1440px; margin:0 auto; padding:0 24px;
+  height:58px; display:flex; align-items:center; gap:20px;
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+}
+.filter-strip-in::-webkit-scrollbar { display:none; }
+
+.fs-group { display:flex; align-items:center; gap:10px; white-space:nowrap; flex-shrink:0; }
+.fs-lbl { font-size:10px; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; }
+.fs-val { font-size:13px; font-weight:900; color:var(--primary); font-family:'Inter',sans-serif; min-width:46px; }
+.fs-sep { width:1px; height:28px; background:var(--border); flex-shrink:0; }
+
+.fs-slider {
+  -webkit-appearance:none; height:4px; border-radius:2px; width:110px;
+  background:rgba(26,140,255,.15); outline:none; cursor:pointer;
+}
+.fs-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:linear-gradient(135deg,var(--primary),var(--violet));
+  cursor:pointer; box-shadow:0 2px 8px var(--primary-glow); transition:transform .2s;
+}
+.fs-slider::-webkit-slider-thumb:hover { transform:scale(1.35); }
+
+/* layout buttons */
+.layout-row { display:flex; gap:4px; }
+.lbtn {
+  background:#fff; border:1.5px solid var(--border);
+  border-radius:9px; padding:5px 11px; font-size:11px; font-weight:700;
+  color:var(--muted); cursor:pointer; transition:all .2s; text-align:center; font-family:inherit;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.lbtn:hover, .lbtn.on { background:rgba(26,140,255,.08); border-color:var(--primary); color:var(--primary); }
+
+.fs-search-btn {
+  margin-left:auto; flex-shrink:0; height:38px; padding:0 20px;
+  background:linear-gradient(135deg,var(--orange),#ea580c);
+  border:none; border-radius:12px; color:#fff;
+  font-size:12px; font-weight:800; font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 14px var(--orange-glow); transition:all .25s;
+  display:flex; align-items:center; gap:8px; white-space:nowrap;
+}
+.fs-search-btn:hover { transform:translateY(-2px); box-shadow:0 8px 22px var(--orange-glow); }
+
+/* ──── MAIN ──── */
+.main { max-width:1440px; margin:0 auto; padding:32px 24px 60px; }
+
+/* ──── PROPERTY SECTION ──── */
+.sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.sec-title { font-size:24px; font-weight:900; color:var(--text); display:flex; align-items:center; gap:12px; }
+.ai-badge {
+  background:rgba(249,115,22,.1); border:1px solid rgba(249,115,22,.25);
+  color:var(--orange); font-size:9px; font-weight:800; padding:4px 12px;
+  border-radius:10px; letter-spacing:1px; text-transform:uppercase;
+}
+.prop-count { font-size:13px; color:var(--muted); }
+
+/* ──── GRAPH SECTION ──── */
+.graph-section {
+  margin-top:40px;
+  background:linear-gradient(140deg,#0d0a08 0%,#1a0e06 50%,#0a0d1a 100%);
+  border:1px solid rgba(235,97,0,.15); border-radius:28px; overflow:hidden;
+  box-shadow:0 8px 60px rgba(0,0,0,.4), 0 0 0 1px rgba(235,97,0,.08); position:relative;
+}
+.graph-section::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg,#eb6100,#f97316,#7c3aed,#1a8cff,#eb6100);
+  background-size:300%; animation:topLineScan 3s linear infinite;
+  box-shadow:0 0 12px rgba(235,97,0,.5);
+}
+@keyframes topLineScan { from{background-position:0%} to{background-position:200%} }
+.graph-section-hd {
+  padding:20px 24px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid rgba(26,140,255,.12);
+}
+.plabel {
+  font-size:10px; font-weight:700; letter-spacing:2.5px;
+  text-transform:uppercase; color:var(--primary);
+  display:flex; align-items:center; gap:8px;
+}
+.plabel::before {
+  content:''; width:6px; height:6px; border-radius:50%;
+  background:var(--primary); box-shadow:0 0 6px var(--primary-glow);
+  animation:blink 1.5s infinite;
+}
+.graph-controls { font-size:10px; color:rgba(200,220,255,.35); letter-spacing:.3px; }
+#graphContainer { width:100%; height:460px; cursor:grab; overflow:hidden; }
+#graphContainer svg { width:100%; height:100%; display:block; }
+.graph-note { padding:12px 24px; font-size:11px; color:rgba(200,220,255,.4); text-align:center; border-top:1px solid rgba(26,140,255,.08); }
+.graph-legend {
+  display:flex; flex-wrap:wrap; gap:16px;
+  padding:14px 24px 16px; border-top:1px solid rgba(26,140,255,.1);
+  background:rgba(0,0,0,.15);
+}
+.legend-item { display:flex; align-items:center; gap:6px; font-size:9px; color:rgba(200,220,255,.45); }
+.legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* ──── PROPERTY GRID ──── */
+.pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:22px; margin-bottom:40px; }
+.empty-state { grid-column:1/-1; text-align:center; padding:80px 20px; color:var(--muted); }
+.empty-icon { font-size:52px; margin-bottom:16px; }
+.empty-title { font-size:16px; font-weight:700; margin-bottom:8px; color:var(--text); }
+.empty-sub { font-size:13px; }
+
+/* ──── PROPERTY CARD ──── */
+.pcard {
+  background:#fff;
+  border:1px solid var(--border); border-radius:24px;
+  overflow:hidden; cursor:pointer; position:relative;
+  box-shadow:0 4px 22px rgba(0,0,0,.06), 0 1px 4px rgba(0,0,0,.04);
+  transition:transform .5s cubic-bezier(.4,0,.2,1), box-shadow .5s, border-color .5s;
+  transform-style:preserve-3d;
+  will-change:transform;
+}
+.pcard:hover {
+  transform:perspective(1200px) translateY(-14px) rotateX(2.5deg) scale(1.005);
+  border-color:rgba(235,97,0,.25);
+  box-shadow:0 32px 72px rgba(235,97,0,.14), 0 8px 20px rgba(0,0,0,.1);
+}
+/* holographic shimmer overlay */
+.pcard::after {
+  content:''; position:absolute; inset:0; z-index:10; pointer-events:none; border-radius:24px;
+  background:linear-gradient(125deg,
+    transparent 25%, rgba(235,97,0,.05) 35%, rgba(86,179,180,.06) 50%,
+    rgba(124,58,237,.05) 65%, transparent 75%);
+  background-size:300% 300%; background-position:0% 50%;
+  opacity:0; transition:opacity .4s;
+}
+.pcard:hover::after {
+  opacity:1;
+  animation:holoShimmer 2.5s ease-in-out infinite;
+}
+@keyframes holoShimmer {
+  0%,100%{ background-position:0% 50%; }
+  50%{     background-position:100% 50%; }
+}
+
+/* card image */
+.cimg-wrap { position:relative; height:240px; overflow:hidden; }
+.cimg { width:100%; height:100%; object-fit:cover; transition:transform .7s cubic-bezier(.4,0,.2,1), opacity .45s; }
+.pcard:hover .cimg { transform:scale(1.1); }
+.cimg-grad { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 25%,rgba(2,8,23,.9)); }
+/* scan-line effect on image hover */
+.cimg-wrap::before {
+  content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.045) 3px,rgba(0,0,0,.045) 4px);
+  opacity:0; transition:opacity .4s;
+}
+.pcard:hover .cimg-wrap::before { opacity:1; }
+/* shimmer skeleton */
+.cimg-skel { position:absolute; inset:0; z-index:1;
+  background: linear-gradient(90deg, #e8ecf5 25%, #d0d7ea 50%, #e8ecf5 75%);
+  background-size:200% 100%; animation:shimmer 1.4s infinite; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── Breadcrumb + area drill-down ── */
+.nifty-bc { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted);
+  padding:10px 0 8px; flex-wrap:wrap; }
+.bc-item { color:var(--primary); text-decoration:none; cursor:pointer; font-weight:600;
+  padding:3px 8px; border-radius:8px; transition:background .2s; }
+.bc-item:hover { background:rgba(26,140,255,.1); }
+.bc-current { color:var(--text); font-weight:700; cursor:default; }
+.bc-sep { color:var(--muted); font-size:14px; }
+
+.area-chips-row { display:flex; gap:7px; flex-wrap:wrap; padding:0 0 14px; }
+.area-chip { padding:5px 13px; border-radius:20px; border:1.5px solid var(--border);
+  background:var(--card); color:var(--text); font-size:11px; font-weight:600;
+  cursor:pointer; transition:all .2s; white-space:nowrap; }
+.area-chip:hover { border-color:var(--primary); color:var(--primary); }
+.area-chip.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+
+/* nifty link badge on modal */
+.nifty-area-link { display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--primary); text-decoration:none; font-weight:600;
+  margin-bottom:10px; padding:4px 10px; border-radius:8px;
+  background:rgba(26,140,255,.08); border:1px solid rgba(26,140,255,.2); }
+.nifty-area-link:hover { background:rgba(26,140,255,.15); }
+
+/* match badge */
+.mbadge {
+  position:absolute; top:14px; left:14px; z-index:5;
+  background:rgba(255,255,255,.92); backdrop-filter:blur(14px);
+  border:1px solid rgba(26,140,255,.2); border-radius:14px;
+  padding:8px 12px; display:flex; align-items:center; gap:10px;
+  box-shadow:0 4px 16px rgba(0,0,0,.12);
+}
+.ring-wrap { position:relative; width:36px; height:36px; flex-shrink:0; }
+.ring-wrap svg { display:block; transform:rotate(-90deg); }
+.ring-pct {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:'Inter',sans-serif; font-size:8.5px; font-weight:900;
+}
+.mi-label { font-size:9px; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; }
+.mi-reason { font-size:10px; color:var(--text); font-weight:600; margin-top:2px; max-width:90px; line-height:1.3; }
+
+/* price bar */
+.price-bar {
+  position:absolute; bottom:14px; left:14px; right:14px;
+  display:flex; justify-content:space-between; align-items:flex-end;
+}
+.pbubble {
+  background:rgba(15,23,42,.75); backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:7px 14px;
+}
+.pamt { font-family:'Inter',sans-serif; font-size:21px; font-weight:900; color:#fff; }
+.punit { font-size:11px; color:rgba(255,255,255,.6); }
+.fav {
+  width:38px; height:38px; border-radius:50%;
+  background:rgba(255,255,255,.85); backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.4); display:flex; align-items:center; justify-content:center;
+  font-size:17px; cursor:pointer; transition:all .2s;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+  outline:none; user-select:none; -webkit-tap-highlight-color:transparent;
+}
+.fav:hover { background:rgba(244,63,94,.15); border-color:rgba(244,63,94,.3); }
+.fav:focus { outline:none; }
+.pcard { outline:none; }
+
+/* card body */
+.cbody { padding:20px 20px 18px; }
+.ctitle { font-size:15px; font-weight:900; color:var(--text); margin-bottom:10px; transition:color .2s; line-height:1.3; }
+.pcard:hover .ctitle { color:var(--primary); }
+.cmeta { display:flex; gap:14px; margin-bottom:14px; }
+.cmeta-i { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--muted); }
+.insight {
+  background:rgba(26,140,255,.05); border:1px solid rgba(26,140,255,.12);
+  border-radius:12px; padding:11px 13px;
+}
+.insight-lbl { font-size:9px; font-weight:800; color:var(--primary); letter-spacing:1px; text-transform:uppercase; margin-bottom:5px; }
+.insight-txt { font-size:11px; color:rgba(15,23,42,.6); line-height:1.65; }
+.ctags { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.tag { background:rgba(26,140,255,.06); border:1px solid rgba(26,140,255,.12); border-radius:8px; padding:3px 9px; font-size:10px; font-weight:600; color:var(--primary); }
+
+/* ──── MORE LINK ──── */
+.more-wrap { text-align:center; padding:8px 0 0; }
+.more-link {
+  display:inline-flex; align-items:center; gap:10px;
+  padding:16px 42px;
+  background:#fff; border:1.5px solid rgba(249,115,22,.3); border-radius:20px;
+  color:var(--orange); font-size:14px; font-weight:700; text-decoration:none;
+  box-shadow:0 4px 16px var(--orange-glow); transition:all .3s;
+}
+.more-link:hover { background:rgba(249,115,22,.04); transform:translateY(-3px); box-shadow:0 12px 36px var(--orange-glow); }
+
+/* ──── FLOATING AI BUTTON ──── */
+.fab {
+  position:fixed; bottom:32px; right:32px; z-index:200;
+  width:62px; height:62px;
+  background:linear-gradient(135deg,var(--primary),var(--violet));
+  border:none; border-radius:20px;
+  display:flex; align-items:center; justify-content:center; font-size:26px;
+  cursor:pointer; box-shadow:0 8px 36px var(--primary-glow), 0 0 60px rgba(99,102,241,.25);
+  animation:fabFloat 3s ease-in-out infinite;
+  transition:transform .3s, box-shadow .3s;
+}
+@keyframes fabFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.fab:hover { animation:none; transform:scale(1.12) translateY(-4px) !important; box-shadow:0 16px 52px var(--primary-glow); }
+.fab-notif {
+  position:absolute; top:-5px; right:-5px; width:18px; height:18px;
+  background:var(--rose); border:2.5px solid var(--bg); border-radius:50%;
+  animation:notifBounce 2s ease-in-out infinite;
+}
+@keyframes notifBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+
+/* ──── CHAT PANEL ──── */
+.chat-panel {
+  position:fixed; bottom:108px; right:32px; width:360px; z-index:199;
+  background:rgba(255,255,255,.97); backdrop-filter:blur(28px);
+  border:1px solid var(--border); border-radius:var(--r-xl);
+  overflow:hidden; box-shadow:0 24px 64px rgba(26,140,255,.18), 0 4px 16px rgba(0,0,0,.1);
+  transform:scale(.85) translateY(20px); opacity:0; pointer-events:none;
+  transform-origin:bottom right;
+  transition:all .38s cubic-bezier(.4,0,.2,1);
+}
+.chat-panel.open { transform:scale(1) translateY(0); opacity:1; pointer-events:auto; }
+
+.chat-hd {
+  padding:18px 20px;
+  background:linear-gradient(135deg,rgba(26,140,255,.08),rgba(249,115,22,.05));
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:12px;
+}
+.chat-close { margin-left:auto; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1; }
+.chat-msgs { height:280px; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px; }
+.msg { max-width:82%; font-size:12.5px; line-height:1.65; border-radius:16px; padding:10px 14px; }
+.msg.ai { background:rgba(235,97,0,.05); border:1px solid rgba(235,97,0,.15); border-radius:4px 16px 16px 16px; align-self:flex-start; color:var(--text); }
+.msg.user { background:linear-gradient(135deg,var(--primary),var(--violet)); color:#fff; border-radius:16px 4px 16px 16px; align-self:flex-end; }
+.chat-in-wrap { padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:8px; }
+.chat-in {
+  flex:1; background:rgba(26,140,255,.05); border:1.5px solid rgba(26,140,255,.15);
+  border-radius:14px; padding:10px 14px; font-size:13px; color:var(--text);
+  font-family:inherit; outline:none; transition:border-color .2s;
+}
+.chat-in:focus { border-color:var(--primary); }
+.chat-send {
+  width:42px; height:42px; background:linear-gradient(135deg,var(--primary),var(--violet));
+  border:none; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:16px; transition:all .2s; flex-shrink:0;
+}
+.chat-send:hover { transform:scale(1.1); box-shadow:0 4px 16px var(--primary-glow); }
+
+/* typing dots */
+.dots { display:inline-flex; gap:4px; align-items:center; }
+.dots span {
+  width:5px; height:5px; background:var(--primary); border-radius:50%;
+  animation:dotPop 1.2s ease-in-out infinite;
+}
+.dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+@keyframes dotPop { 0%,80%,100%{transform:scale(.8);opacity:.5} 40%{transform:scale(1.25);opacity:1} }
+
+/* ──── MODAL ──── */
+.modal-ov {
+  position:fixed; inset:0; z-index:300;
+  background:rgba(15,23,42,.6); backdrop-filter:blur(16px);
+  display:none; align-items:center; justify-content:center; padding:20px;
+}
+.modal-ov.open { display:flex; }
+.modal {
+  background:#fff;
+  border:1px solid var(--border); border-radius:var(--r-xl);
+  width:100%; max-width:920px; max-height:90vh; overflow:hidden;
+  display:flex; animation:modalIn .38s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 32px 80px rgba(26,140,255,.18), 0 8px 24px rgba(0,0,0,.12);
+}
+@keyframes modalIn { from{transform:scale(.9) translateY(24px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+.mimg-side { width:48%; position:relative; flex-shrink:0; }
+.mimg { width:100%; height:100%; object-fit:cover; }
+.mclose {
+  position:absolute; top:18px; left:18px; width:40px; height:40px;
+  background:rgba(255,255,255,.88); backdrop-filter:blur(12px);
+  border:1px solid rgba(0,0,0,.1); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text); font-size:17px; font-family:inherit; transition:all .2s;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.mclose:hover { background:rgba(244,63,94,.1); border-color:rgba(244,63,94,.3); }
+.mbody { flex:1; overflow-y:auto; padding:36px; }
+
+.mpred { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.mpred-icon {
+  width:34px; height:34px; border-radius:10px; flex-shrink:0;
+  background:rgba(249,115,22,.1); border:1px solid rgba(249,115,22,.25);
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.mpred-lbl { font-size:9px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.mpred-val { font-size:12px; font-weight:800; color:var(--orange); margin-top:2px; }
+
+.mtitle { font-size:26px; font-weight:900; color:var(--text); line-height:1.2; margin-bottom:6px; }
+.maddr { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.mstats { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:22px; }
+.mstat { background:rgba(26,140,255,.04); border:1px solid var(--border); border-radius:14px; padding:14px; }
+.mstat-lbl { font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.mstat-v { font-family:'Inter',sans-serif; font-size:26px; font-weight:900; color:var(--primary); }
+.mstat-v span { font-size:13px; color:var(--muted); font-weight:500; }
+
+.m-insight { background:rgba(26,140,255,.05); border:1px solid rgba(26,140,255,.14); border-radius:14px; padding:16px; margin-bottom:22px; }
+.m-insight-lbl { font-size:9px; font-weight:800; color:var(--primary); letter-spacing:1px; text-transform:uppercase; margin-bottom:7px; }
+.m-insight-txt { font-size:13px; color:rgba(15,23,42,.7); line-height:1.75; }
+
+.maction {
+  width:100%; height:54px; border:none; border-radius:17px; font-size:14px;
+  font-weight:900; font-family:inherit; cursor:pointer; display:flex;
+  align-items:center; justify-content:center; gap:9px; margin-bottom:10px; transition:all .3s;
+}
+.maction.p { background:linear-gradient(135deg,var(--orange),#ea580c); color:#fff; box-shadow:0 6px 24px var(--orange-glow); }
+.maction.p:hover { transform:translateY(-2px); box-shadow:0 12px 36px var(--orange-glow); }
+.maction.s { background:rgba(26,140,255,.06); border:1.5px solid rgba(26,140,255,.18); color:var(--primary); }
+.maction.s:hover { background:rgba(26,140,255,.1); border-color:var(--primary); }
+
+/* ──── MOBILE BOTTOM NAV ──── */
+.bnav {
+  display:none; position:fixed; bottom:0; left:0; right:0; height:70px;
+  background:rgba(255,255,255,.96); backdrop-filter:blur(24px);
+  border-top:1px solid var(--border); z-index:150;
+  box-shadow:0 -4px 20px rgba(26,140,255,.08);
+}
+.bnav-in { display:flex; justify-content:space-around; align-items:center; height:100%; padding:0 10px; }
+.bni { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px 16px; border-radius:14px; }
+.bni.on { background:rgba(26,140,255,.08); }
+.bni-icon { font-size:20px; }
+.bni-txt { font-size:10px; font-weight:700; color:var(--muted); }
+.bni.on .bni-txt { color:var(--primary); }
+
+/* ──── RESPONSIVE ──── */
+@media(max-width:1060px) {
+  .pgrid { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); }
+}
+@media(max-width:768px) {
+  .header-in { height:60px; gap:12px; }
+  .logo-txt { display:none; }
+  .status-bar .s-item:not(:first-child):not(.s-ml) { display:none; }
+  .pgrid { grid-template-columns:1fr; }
+  .main { padding:20px 14px 88px; }
+  .fab { right:20px; bottom:84px; }
+  .chat-panel { width:calc(100vw - 32px); right:16px; bottom:104px; }
+  .modal { flex-direction:column; max-height:94vh; }
+  .mimg-side { width:100%; height:230px; }
+  .mbody { padding:24px; }
+  .bnav { display:block; }
+  .search-btn span { display:none; }
+  .search-btn { padding:0 14px; }
+  .hero { padding:40px 16px 36px; }
+  .hero-title { letter-spacing:-.5px; }
+  .ai-concierge-bar { padding:14px 16px; }
+  .filter-strip-in { padding:0 16px; gap:14px; }
+  .fs-group.fs-size { display:none; }
+}
+@media(max-width:480px) {
+  .htab { padding:8px 14px; font-size:12px; }
+  #chipBar { gap:6px; }
+  .chip { padding:7px 14px; font-size:11px; }
+  .hero-quick-chips { gap:6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="load-ring"></div>
+  <div class="load-logo">ニフティ不動産AI</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+  <div class="load-txt" id="loadTxt">AI INITIALIZING...</div>
+</div>
+
+<!-- Aurora -->
+<div id="aurora">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+</div>
+
+<!-- Neural Canvas -->
+<canvas id="neural"></canvas>
+
+<!-- Scan line -->
+<div class="scan-line"></div>
+
+<!-- Wrap -->
+<div class="wrap">
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="s-item"><div class="s-dot g"></div><span>ニフティ不動産AIエンジン稼働中</span></div>
+    <div class="s-item"><div class="s-dot c"></div><span>ニフティ不動産データリンク</span></div>
+    <div class="s-item"><span>東京都全域 22区対応</span></div>
+    <div class="s-item s-ml"><span id="clock"></span></div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-in">
+      <a class="logo" href="https://myhome.nifty.com/rent/" target="_blank" rel="noopener">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" fill="rgba(255,255,255,.9)"/>
+            <path d="M2 17l10 5 10-5" stroke="rgba(255,255,255,.65)" stroke-width="2" fill="none"/>
+            <path d="M2 12l10 5 10-5" stroke="white" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+        <span class="logo-txt">ニフティ<em>不動産AI</em></span>
+      </a>
+
+      <div class="search-wrap">
+        <svg class="s-icon-l" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="searchInput" type="text" autocomplete="off"
+          placeholder="AIに相談：『渋谷から30分以内・南向き・猫可の1LDK』">
+        <div class="s-icon-r"><span class="ai-pill">AI</span></div>
+      </div>
+
+      <button class="search-btn" onclick="doSearch()">
+        <span>検索する</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <!-- SF perspective grid -->
+    <div class="hero-warp-grid"></div>
+    <div class="hero-in">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        POWERED BY ニフティ不動産AI
+      </div>
+      <h1 class="hero-title">AIと選ぶ、あなたの<br><span>理想の東京物件</span></h1>
+      <div class="ai-concierge-bar">
+        <div class="ai-avatar">🤖</div>
+        <div class="ai-msg-area">
+          <div class="ai-name-row">
+            ニフティ不動産AIコンシェルジュ
+            <span class="ai-online-dot"></span>オンライン
+          </div>
+          <div id="aiMsg">こんにちは！<span class="cursor"></span></div>
+        </div>
+      </div>
+      <nav class="hero-tabs">
+        <button class="htab on" onclick="document.querySelectorAll('.htab').forEach(t=>t.classList.remove('on'));this.classList.add('on')">🗺 エリアから</button>
+        <button class="htab" onclick="document.querySelectorAll('.htab').forEach(t=>t.classList.remove('on'));this.classList.add('on')">🚃 沿線から</button>
+        <button class="htab" onclick="document.querySelectorAll('.htab').forEach(t=>t.classList.remove('on'));this.classList.add('on')">📍 地図から</button>
+      </nav>
+      <div id="chipBar">
+        <button class="chip on" onclick="setArea(null,this)">すべて</button>
+        <button class="chip" onclick="setArea('渋谷区',this)">渋谷区</button>
+        <button class="chip" onclick="setArea('新宿区',this)">新宿区</button>
+        <button class="chip" onclick="setArea('目黒区',this)">目黒区</button>
+        <button class="chip" onclick="setArea('荒川区',this)">荒川区</button>
+        <button class="chip" onclick="setArea('杉並区',this)">杉並区</button>
+        <button class="chip" onclick="setArea('板橋区',this)">板橋区</button>
+        <button class="chip" onclick="setArea('大田区',this)">大田区</button>
+      </div>
+      <div class="hero-quick-chips">
+        <button class="s-chip" onclick="useChip('駅徒歩5分以内')">🚶 駅近</button>
+        <button class="s-chip" onclick="useChip('南向き')">☀️ 南向き</button>
+        <button class="s-chip" onclick="useChip('ペット可')">🐱 ペット可</button>
+        <button class="s-chip" onclick="useChip('築10年以内')">🏢 築浅</button>
+        <button class="s-chip" onclick="useChip('在宅ワーク向き')">💻 在宅向き</button>
+        <button class="s-chip" onclick="useChip('デザイナーズ')">✨ デザイナーズ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filter Strip (sticky) -->
+  <div class="filter-strip">
+    <div class="filter-strip-in">
+      <div class="fs-group">
+        <span class="fs-lbl">家賃上限</span>
+        <input type="range" class="fs-slider" id="priceR" min="5" max="60" step="1" value="60" oninput="onFilter()">
+        <span class="fs-val" id="prLbl">60万円</span>
+      </div>
+      <div class="fs-sep"></div>
+      <div class="fs-group">
+        <span class="fs-lbl">間取り</span>
+        <div class="layout-row">
+          <button class="lbtn" onclick="toggleL(this,'1R')">1R</button>
+          <button class="lbtn on" onclick="toggleL(this,'1K')">1K</button>
+          <button class="lbtn on" onclick="toggleL(this,'1LDK')">1LDK</button>
+          <button class="lbtn" onclick="toggleL(this,'2LDK')">2LDK</button>
+        </div>
+      </div>
+      <div class="fs-sep"></div>
+      <div class="fs-group fs-size">
+        <span class="fs-lbl">面積下限</span>
+        <input type="range" class="fs-slider" id="sizeR" min="10" max="80" step="5" value="20" oninput="onFilter()">
+        <span class="fs-val" id="szLbl">20㎡</span>
+      </div>
+      <button class="fs-search-btn" onclick="doSearch()">
+        niftyで詳細検索
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Breadcrumb -->
+    <nav class="nifty-bc">
+      <a class="bc-item" href="https://myhome.nifty.com/rent/" target="_blank" rel="noopener">賃貸TOP</a>
+      <span class="bc-sep">›</span>
+      <a class="bc-item" href="https://myhome.nifty.com/rent/tokyo/" target="_blank" rel="noopener" onclick="setArea(null,null);return true;">東京都</a>
+      <span class="bc-sep">›</span>
+      <span class="bc-item bc-current" id="bcCurrent">全エリア</span>
+    </nav>
+    <!-- Area drill-down chips -->
+    <div class="area-chips-row" id="areaChipsRow"></div>
+
+    <!-- Section header -->
+    <div class="sec-hd">
+      <h2 class="sec-title">
+        <span id="areaTitle">東京のおすすめ</span>
+        <span class="ai-badge">⚡ AI分析済み</span>
+      </h2>
+      <div class="prop-count"><span id="propCnt">0</span>件</div>
+    </div>
+
+    <!-- Property Grid -->
+    <div class="pgrid" id="pgrid"></div>
+
+    <!-- More link -->
+    <div class="more-wrap">
+      <a class="more-link" id="moreLink" href="https://myhome.nifty.com/rent/tokyo/" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        niftyで全件を見る
+      </a>
+    </div>
+
+    <!-- D3 Force Graph Section -->
+    <div class="graph-section">
+      <div class="graph-section-hd">
+        <span class="plabel">物件ネットワーク</span>
+        <span class="graph-controls">drag＝固定 &nbsp;|&nbsp; wクリック＝解除 &nbsp;|&nbsp; ノードをクリックで絞込</span>
+      </div>
+      <div id="graphContainer" style="width:100%;height:460px;cursor:grab;overflow:hidden;">
+        <svg id="graphSvg" style="width:100%;height:100%;display:block;"></svg>
+      </div>
+      <div id="graphNote" class="graph-note">エリアを選択して物件を絞り込む</div>
+      <div class="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f97316;box-shadow:0 0 7px rgba(249,115,22,.6)"></div>中心</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1a8cff;box-shadow:0 0 7px rgba(26,140,255,.6)"></div>間取り</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;box-shadow:0 0 7px rgba(16,185,129,.6)"></div>価格帯</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#56b3b4;box-shadow:0 0 7px rgba(86,179,180,.6)"></div>物件（クリック詳細）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ec4899;box-shadow:0 0 7px rgba(236,72,153,.6)"></div>お気に入り</div>
+      </div>
+    </div>
+  </main>
+</div><!-- /wrap -->
+
+<!-- Float AI Button -->
+<button class="fab" id="fab" onclick="toggleChat()" aria-label="AIチャット">
+  <div class="fab-notif"></div>
+  🤖
+</button>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-hd">
+    <div class="ai-avatar" style="width:36px;height:36px;border-radius:12px;font-size:18px;">🤖</div>
+    <div>
+      <div style="font-size:14px;font-weight:800;color:#0f172a;">ニフティ不動産AIコンシェルジュ</div>
+      <div style="font-size:10px;color:var(--green);display:flex;align-items:center;gap:6px;margin-top:2px;">
+        <div class="s-dot g" style="animation-name:blink"></div>オンライン
+      </div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="msg ai">こんにちは！🏠 ニフティ不動産AIです。<br>どんなお部屋をお探しですか？</div>
+  </div>
+  <div class="chat-in-wrap">
+    <input class="chat-in" id="chatIn" type="text" placeholder="例：渋谷区で猫が飼えるお部屋..."
+      onkeypress="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-ov" id="modalOv" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="mimg-side">
+      <div class="cimg-skel" id="mSkel" style="position:absolute;inset:0;z-index:1"></div>
+      <img class="mimg" id="mImg" src="" alt="" style="opacity:0;transition:opacity .45s">
+      <button class="mclose" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="mpred">
+        <div class="mpred-icon">📈</div>
+        <div><div class="mpred-lbl">AI予測</div><div class="mpred-val" id="mPred"></div></div>
+      </div>
+      <h2 class="mtitle" id="mTitle"></h2>
+      <p class="maddr" id="mAddr"></p>
+      <div class="mstats">
+        <div class="mstat"><div class="mstat-lbl">月額賃料</div><div class="mstat-v" id="mPrice"></div></div>
+        <div class="mstat"><div class="mstat-lbl">間取り</div><div class="mstat-v" style="color:#0f172a" id="mLayout"></div></div>
+        <div class="mstat"><div class="mstat-lbl">専有面積</div><div class="mstat-v" style="color:var(--cyan)" id="mSize"></div></div>
+        <div class="mstat"><div class="mstat-lbl">駅距離</div><div class="mstat-v" style="font-size:18px;color:#0f172a" id="mWalk"></div></div>
+      </div>
+      <div class="m-insight">
+        <div class="m-insight-lbl">✦ AIインサイト</div>
+        <div class="m-insight-txt" id="mInsight"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+        <a id="mAreaLink" href="https://myhome.nifty.com/rent/tokyo/" target="_blank" rel="noopener" class="nifty-area-link">
+          🗺 <span id="mAreaLinkTxt">東京都</span>の物件一覧
+        </a>
+      </div>
+      <a id="mLink" href="https://myhome.nifty.com/rent/" target="_blank" rel="noopener" style="text-decoration:none">
+        <button class="maction p">✦ niftyで詳細・内見申込</button>
+      </a>
+      <button class="maction s" onclick="saveCondition()">🤖 AIに条件を覚えさせる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Bottom Nav -->
+<div class="bnav">
+  <div class="bnav-in">
+    <div class="bni on"><div class="bni-icon">🏠</div><div class="bni-txt">検索</div></div>
+    <div class="bni" onclick="showMobileFilter()"><div class="bni-icon">⚡</div><div class="bni-txt">絞込</div></div>
+    <div class="bni"><div class="bni-icon">❤️</div><div class="bni-txt">お気に入り</div></div>
+    <div class="bni">
+      <a href="https://myhome.nifty.com/rent/" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div class="bni-icon">🔗</div><div class="bni-txt">nifty</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   DATA
+───────────────────────────────────────────── */
+// ─── nifty不動産 実際の掲載物件データ ───────────────────────
+// 出典: https://myhome.nifty.com/rent/tokyo/
+const PROPS = [
+  {
+    id:1,
+    title:"グランパーク千駄ヶ谷レジデンス",
+    price:29.9, layout:"1LDK", size:46.12,
+    walk:"徒歩5分", area:"渋谷区", score:92, reason:"駅近×上質空間",
+    addr:"東京都渋谷区千駄ヶ谷",
+    img:"https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800",
+    tags:["代々木駅徒歩5分","1LDK","オートロック","築浅"],
+    insight:"代々木駅から徒歩5分の1LDK。千駄ヶ谷は新宿・渋谷どちらにもアクセスしやすい好立地。46㎡超の広々とした空間で、AI評価では「立地×コスパ」の総合スコアが区内トップクラス。",
+    pred:"問い合わせ急増中",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_043e18ffcd11393a88c739d06e5c0be1/"
+  },
+  {
+    id:2,
+    title:"アジールコート松濤",
+    price:19.4, layout:"1LDK", size:33.56,
+    walk:"徒歩7分", area:"渋谷区", score:88, reason:"高級住宅街",
+    addr:"東京都渋谷区松濤",
+    img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800",
+    tags:["神泉駅近","松濤","高級住宅地","1LDK"],
+    insight:"神泉駅から徒歩7分の松濤エリア。渋谷区の中でも特に高級住宅地として知られる松濤に位置し、静かで落ち着いた環境。この価格帯での松濤アドレスは非常に希少です。",
+    pred:"希少立地・早めの行動推奨",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_3a946cd1d73e3bd8a1ff7cc9a187fdd1/"
+  },
+  {
+    id:3,
+    title:"イプセ初台",
+    price:13.8, layout:"1DK", size:25.03,
+    walk:"徒歩7分", area:"渋谷区", score:82, reason:"渋谷区コスパ",
+    addr:"東京都渋谷区初台",
+    img:"https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800",
+    tags:["初台駅近","1DK","渋谷区","オートロック"],
+    insight:"初台駅から徒歩7分の1DK。渋谷区で13.8万円はAI評価でコスパ上位ランク。新宿御苑や代々木公園にも自転車圏内で、都会と自然を両立できる好立地です。",
+    pred:"渋谷区コスパランキング上位",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_3a09f83a4e533accb5bdd05afb987e0f/"
+  },
+  {
+    id:4,
+    title:"IPSE代々木上原",
+    price:31.5, layout:"2LDK", size:69.07,
+    walk:"徒歩2分", area:"渋谷区", score:95, reason:"駅2分の2LDK",
+    addr:"東京都渋谷区上原",
+    img:"https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=800",
+    tags:["代々木上原駅徒歩2分","2LDK","69㎡","即入居可"],
+    insight:"代々木上原駅から徒歩わずか2分。小田急・千代田線の2路線が使える超好立地の2LDK。69㎡の広さはカップル・ファミリーに最適。AIスコア95点は当サイト全体でも最上位クラス。",
+    pred:"AI最高評価・即見学推奨",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_2a68fb37ff3a3be487ef38c882e00610/"
+  },
+  {
+    id:5,
+    title:"エタニティ富ヶ谷",
+    price:32.0, layout:"1LDK", size:57.67,
+    walk:"徒歩7分", area:"渋谷区", score:89, reason:"広々1LDK",
+    addr:"東京都渋谷区富ヶ谷",
+    img:"https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&q=80&w=800",
+    tags:["代々木公園駅近","1LDK","57㎡","南向き"],
+    insight:"代々木公園駅から徒歩7分の広々1LDK。富ヶ谷は代々木公園に隣接する閑静な住宅街でカフェ・飲食店も充実。57㎡の1LDKは同エリアでも特に広く、在宅ワーク環境にも最適です。",
+    pred:"ハイグレード物件・空室希少",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_d0aa2ea751cf367dbd1a9c606fefce3d/"
+  },
+  {
+    id:6,
+    title:"LEGALAND恵比寿ANNEX",
+    price:12.0, layout:"1K", size:18.82,
+    walk:"徒歩9分", area:"渋谷区", score:85, reason:"恵比寿アドレス",
+    addr:"東京都渋谷区恵比寿",
+    img:"https://images.unsplash.com/photo-1556020685-ae41abfc9365?auto=format&fit=crop&q=80&w=800",
+    tags:["恵比寿駅徒歩9分","1K","渋谷区","インターネット無料"],
+    insight:"恵比寿駅から徒歩9分の1K。おしゃれな恵比寿エリアに12万円でアドレスを持てるのは希少。周辺の飲食店・ショッピング環境が充実し、単身者に人気のエリアです。",
+    pred:"恵比寿アドレスの希少物件",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_51fad15b9a273d22b5fb4a888e233788/"
+  },
+  {
+    id:7,
+    title:"ラグディア北新宿",
+    price:12.6, layout:"1K", size:25.41,
+    walk:"徒歩9分", area:"新宿区", score:79, reason:"新宿区コスパ",
+    addr:"東京都新宿区北新宿",
+    img:"https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=800",
+    tags:["東中野駅近","1K","25㎡","バストイレ別"],
+    insight:"東中野駅から徒歩9分の1K。25㎡と同価格帯では広めの間取りで、バストイレ別。新宿区の中では比較的落ち着いた北新宿エリアに位置し、ターミナル駅へのアクセスも良好です。",
+    pred:"新宿区内コスパ上位",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_eac22ddd75b936488fb32a453bf8c413/"
+  },
+  {
+    id:8,
+    title:"グラナーデ目白御留山",
+    price:18.5, layout:"1LDK", size:39.12,
+    walk:"徒歩7分", area:"新宿区", score:83, reason:"文教エリア",
+    addr:"東京都新宿区下落合",
+    img:"https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=800",
+    tags:["下落合駅近","1LDK","目白台","閑静"],
+    insight:"下落合駅から徒歩7分の1LDK。目白御留山は皇室ゆかりの由緒ある高台エリア。周辺は学習院大学・椿山荘など文化的施設が多く、品格ある暮らしが実現できます。",
+    pred:"文教エリアで安定人気",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_7a750445aad833e1b62c1be2fb474f81/"
+  },
+  {
+    id:9,
+    title:"第一辻ビル",
+    price:27.4, layout:"1SLDK", size:62.14,
+    walk:"徒歩4分", area:"新宿区", score:86, reason:"広い+駅近",
+    addr:"東京都新宿区関口",
+    img:"https://images.unsplash.com/photo-1416331108676-a22ccb276e35?auto=format&fit=crop&q=80&w=800",
+    tags:["江戸川橋駅徒歩4分","1SLDK","62㎡","神楽坂近"],
+    insight:"江戸川橋駅から徒歩4分の1SLDK。62㎡超の広さにサービスルーム付きで実質2部屋使える間取り。神楽坂まで徒歩圏内で、落ち着いた文教地区の雰囲気も魅力です。",
+    pred:"在宅ワーク・書斎需要に最適",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_6380fc0ea4553bed86d81ea54683744e/"
+  },
+  {
+    id:10,
+    title:"イプセ四谷",
+    price:18.2, layout:"1DK", size:25.54,
+    walk:"徒歩3分", area:"新宿区", score:91, reason:"駅3分の穴場",
+    addr:"東京都新宿区四谷",
+    img:"https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800",
+    tags:["四谷三丁目駅徒歩3分","1DK","丸ノ内線","駅近"],
+    insight:"四谷三丁目駅から徒歩3分の超駅近1DK。丸ノ内線直通で新宿・東京駅どちらにも好アクセス。四谷は歴史的な街並みと利便性が共存し、ビジネスパーソンに特に人気です。",
+    pred:"利便性スコア全物件中2位",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_f3dd0ba4246735a79a9d02bd4026bfa3/"
+  },
+  {
+    id:11,
+    title:"ASTILE市谷柳町",
+    price:16.1, layout:"1DK", size:35.24,
+    walk:"徒歩1分", area:"新宿区", score:93, reason:"駅1分！激レア",
+    addr:"東京都新宿区市谷柳町",
+    img:"https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800",
+    tags:["牛込柳町駅徒歩1分","1DK","35㎡","即入居可"],
+    insight:"牛込柳町駅から徒歩わずか1分の超好立地。徒歩1分物件は都内でも極めて希少で、AI評価では「利便性×価格」総合スコア93点。市谷・神楽坂エリアで16.1万円はコスパ抜群。",
+    pred:"徒歩1分の激レア物件",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_5f6e0536ce743502ad20ab7937642030/"
+  },
+  {
+    id:12,
+    title:"オアーゼ新宿西落合レジデンス",
+    price:12.1, layout:"1K", size:25.71,
+    walk:"徒歩6分", area:"新宿区", score:78, reason:"新宿区格安",
+    addr:"東京都新宿区西落合",
+    img:"https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?auto=format&fit=crop&q=80&w=800",
+    tags:["落合南長崎駅近","1K","25㎡","新宿区"],
+    insight:"落合南長崎駅から徒歩6分の1K。新宿区で12万円台は希少なコスパ物件。西落合は静かな住宅地で落ち着いた生活環境が整っており、長期入居者の多い安定エリアです。",
+    pred:"新宿区内割安ランキング上位",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_43de50a175e83aeaaab66e485a1c444d/"
+  },
+  {
+    id:13,
+    title:"GRANPASEO神楽坂II",
+    price:13.6, layout:"1K", size:25.38,
+    walk:"徒歩3分", area:"新宿区", score:87, reason:"神楽坂3分",
+    addr:"東京都新宿区神楽坂",
+    img:"https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=800",
+    tags:["神楽坂駅徒歩3分","1K","神楽坂","築浅"],
+    insight:"神楽坂駅から徒歩3分の1K。フランス人街としても知られるおしゃれな神楽坂エリアで13.6万円は高コスパ。飲食店・カフェが充実し、AI評価87点の人気物件です。",
+    pred:"神楽坂アドレスでこの価格は希少",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_1f076cc5bad43a68ba8074ab10926ecf/"
+  },
+  {
+    id:14,
+    title:"D'sVARIE高田馬場レジデンス",
+    price:13.8, layout:"1DK", size:23.64,
+    walk:"徒歩6分", area:"新宿区", score:80, reason:"学生・社会人向",
+    addr:"東京都新宿区下落合",
+    img:"https://images.unsplash.com/photo-1574362848149-11496d93a7c7?auto=format&fit=crop&q=80&w=800",
+    tags:["下落合駅近","1DK","オートロック","宅配BOX"],
+    insight:"下落合駅から徒歩6分の1DK。高田馬場エリアは早稲田大学など多くの学校が集まる活気ある街。飲食店・書店・スポーツジムなど生活施設が豊富で単身者に最適。",
+    pred:"利便性×価格バランス良好",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_7b7ed13dcbb336feacc6088559a2e8fd/"
+  },
+  {
+    id:15,
+    title:"ASK中目黒",
+    price:54.0, layout:"3LDK", size:88.98,
+    walk:"徒歩10分", area:"目黒区", score:84, reason:"中目黒の3LDK",
+    addr:"東京都目黒区中目黒",
+    img:"https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&q=80&w=800",
+    tags:["祐天寺駅近","3LDK","88㎡","目黒区"],
+    insight:"祐天寺駅から徒歩10分の3LDK。88.98㎡の広大な空間はファミリーやシェアにも最適。中目黒の洗練されたライフスタイルを享受できるプレミアムファミリー物件です。",
+    pred:"ファミリー向けプレミアム物件",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/meguroku_ct/detail_137bd004ebfe3d4fb513bcb00abc6213/"
+  },
+  {
+    id:16,
+    title:"チロル",
+    price:40.0, layout:"3LDK", size:72.26,
+    walk:"徒歩6分", area:"目黒区", score:88, reason:"自由が丘の3LDK",
+    addr:"東京都目黒区自由が丘",
+    img:"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=800",
+    tags:["自由が丘駅徒歩6分","3LDK","72㎡","目黒区"],
+    insight:"自由が丘駅から徒歩6分の3LDK。全国的に人気の自由が丘に位置し、72㎡の広さも魅力。AI分析では「住みたい街」上位エリアのファミリー物件として高評価。",
+    pred:"自由が丘ファミリー向け人気物件",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/meguroku_ct/detail_5540b2a7cd3537fc936250179c5dc9ae/"
+  },
+  {
+    id:17,
+    title:"アーバンフロント日暮里",
+    price:11.2, layout:"1K", size:20.22,
+    walk:"徒歩8分", area:"荒川区", score:76, reason:"3路線アクセス",
+    addr:"東京都荒川区東日暮里",
+    img:"https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&q=80&w=800",
+    tags:["日暮里駅徒歩8分","1K","山手線","日暮里舎人ライナー"],
+    insight:"日暮里駅から徒歩8分の1K。山手線・京成線・日暮里舎人ライナーの3路線が利用可能な交通利便性の高さが特徴。AI評価ではこの価格帯での都内コスパ上位物件に認定。",
+    pred:"交通利便性スコア高評価",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/arakawaku_ct/detail_149b3fb79b11313d83434aa81471a5cc/"
+  },
+  {
+    id:18,
+    title:"RELUXIA方南町II",
+    price:10.1, layout:"1R", size:20.69,
+    walk:"徒歩8分", area:"杉並区", score:75, reason:"10万円台の穴場",
+    addr:"東京都杉並区方南",
+    img:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800",
+    tags:["方南町駅徒歩8分","1R","丸ノ内線","始発駅"],
+    insight:"方南町駅から徒歩8分の1R。杉並区で10万円台は都内でも希少なコスパ物件。方南町は丸ノ内線の始発駅で座って通勤できる利点があり、静かな住宅地として生活環境も良好。",
+    pred:"始発駅エリアで穴場物件",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/suginamiku_ct/detail_06b061dae17331e2ab70a0b5d5ec726b/"
+  },
+  {
+    id:19,
+    title:"ルフォンリヴェント板橋西台",
+    price:16.1, layout:"1SLDK", size:35.7,
+    walk:"徒歩9分", area:"板橋区", score:80, reason:"S付きで広々",
+    addr:"東京都板橋区西台",
+    img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=800",
+    tags:["西台駅徒歩9分","1SLDK","35㎡","サービスルーム"],
+    insight:"西台駅から徒歩9分の1SLDK。サービスルーム付きで実質2部屋として使用可能。板橋区は都心より家賃が抑えられるエリアで、16.1万円でこの広さは高いコスパを誇ります。",
+    pred:"在宅ワーク需要で人気上昇中",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/itabashiku_ct/detail_0718994963c630cebe45fb29c0fadd4e/"
+  },
+  {
+    id:20,
+    title:"シャーメゾン アレグリア",
+    price:21.9, layout:"2LDK", size:70.96,
+    walk:"徒歩17分", area:"大田区", score:74, reason:"広々2LDK格安",
+    addr:"東京都大田区蒲田",
+    img:"https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=800",
+    tags:["蒲田駅徒歩17分","2LDK","70㎡","羽田空港近"],
+    insight:"蒲田駅から徒歩17分の2LDK。70.96㎡の広さでこの価格は都内では希少なコスパ物件。羽田空港まで電車一本でアクセスでき、出張族にも人気のシャーメゾンブランド物件。",
+    pred:"ファミリー向けコスパNo.1",
+    niftyUrl:"https://myhome.nifty.com/rent/tokyo/otaku_ct/detail_be9039becc8e3d4caa1aa213814bb11c/"
+  }
+];
+
+/* ─────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────── */
+let activeArea = null;
+let maxPrice = 60;
+let minSize = 20;
+let chatOpen = false;
+let graphFilter = null; // { type:'layout'|'price', cat:'cat-1R'|... }
+
+/* ─────────────────────────────────────────────
+   REAL-TIME IMAGE LOADING (nifty → homes.jp)
+───────────────────────────────────────────── */
+const IMG_CACHE = {};
+const IMG_PROXY = 'https://api.allorigins.win/get?url=';
+
+async function fetchNiftyImage(propId) {
+  // Memory cache
+  if (IMG_CACHE[propId] !== undefined) return IMG_CACHE[propId];
+  // Session cache
+  const stored = sessionStorage.getItem('nimg_' + propId);
+  if (stored) { IMG_CACHE[propId] = stored; return stored; }
+
+  const p = PROPS.find(x => x.id === propId);
+  if (!p) return null;
+
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(IMG_PROXY + encodeURIComponent(p.niftyUrl), { signal: ctrl.signal });
+    clearTimeout(tid);
+    const data = await res.json();
+    const html = data.contents || '';
+
+    // 1. og:image
+    let url = (html.match(/property="og:image"\s+content="([^"]+)"/i)
+            || html.match(/content="([^"]+)"\s+property="og:image"/i) || [])[1];
+
+    // 2. homes.jp image URL in the page source
+    if (!url) {
+      const m = html.match(/(https?:\/\/image\d*\.homes\.jp\/[^"'\s\\]+)/);
+      if (m) url = m[1];
+    }
+
+    // 3. img.homes.jp raw path
+    if (!url) {
+      const m = html.match(/(https?:\/\/img\.homes\.jp\/[^"'\s\\]+\.jpg)/);
+      if (m) url = m[1];
+    }
+
+    if (url) {
+      IMG_CACHE[propId] = url;
+      sessionStorage.setItem('nimg_' + propId, url);
+      return url;
+    }
+  } catch(e) {}
+
+  IMG_CACHE[propId] = null; // mark as tried
+  return null;
+}
+
+function applyImage(imgEl, skelEl, url, fallback) {
+  const show = (src) => {
+    imgEl.src = src;
+    imgEl.onload = () => { imgEl.style.opacity = '1'; skelEl.style.display = 'none'; };
+    imgEl.onerror = () => {
+      if (src !== fallback && fallback) {
+        imgEl.src = fallback;
+        imgEl.onload = () => { imgEl.style.opacity = '1'; skelEl.style.display = 'none'; };
+      } else { skelEl.style.display = 'none'; }
+    };
+  };
+  if (url) { show(url); } else if (fallback) { show(fallback); } else { skelEl.style.display = 'none'; }
+}
+
+async function loadCardImage(p) {
+  const imgEl = document.getElementById('cimg_' + p.id);
+  const skelEl = document.getElementById('skel_' + p.id);
+  if (!imgEl || !skelEl) return;
+  const url = await fetchNiftyImage(p.id);
+  applyImage(imgEl, skelEl, url, p.img);
+}
+
+async function loadAllImages(list) {
+  // Load in batches of 4 to avoid overwhelming the proxy
+  for (let i = 0; i < list.length; i += 4) {
+    await Promise.all(list.slice(i, i+4).map(loadCardImage));
+  }
+}
+
+/* ─────────────────────────────────────────────
+   BREADCRUMB + AREA CHIPS
+───────────────────────────────────────────── */
+// nifty area URL map
+const AREA_URL = {
+  '渋谷区':'https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/',
+  '新宿区':'https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/',
+  '目黒区':'https://myhome.nifty.com/rent/tokyo/meguroku_ct/',
+  '荒川区':'https://myhome.nifty.com/rent/tokyo/arakawaku_ct/',
+  '杉並区':'https://myhome.nifty.com/rent/tokyo/suginamiku_ct/',
+  '板橋区':'https://myhome.nifty.com/rent/tokyo/itabashiku_ct/',
+  '大田区':'https://myhome.nifty.com/rent/tokyo/otaku_ct/',
+  '江東区':'https://myhome.nifty.com/rent/tokyo/kotoku_ct/',
+  '青梅市':'https://myhome.nifty.com/rent/tokyo/omeshi_ct/',
+  '八王子市':'https://myhome.nifty.com/rent/tokyo/hachiojishi_ct/',
+};
+
+function renderBreadcrumb() {
+  // Current area label
+  document.getElementById('bcCurrent').textContent = activeArea || '全エリア';
+
+  // Area chips — unique areas from PROPS sorted by count desc
+  const areaCounts = {};
+  PROPS.forEach(p => { areaCounts[p.area] = (areaCounts[p.area]||0)+1; });
+  const areas = Object.keys(areaCounts).sort((a,b) => areaCounts[b]-areaCounts[a]);
+
+  document.getElementById('areaChipsRow').innerHTML =
+    `<button class="area-chip${!activeArea?' on':''}" onclick="setArea(null,null)">すべて</button>` +
+    areas.map(a =>
+      `<button class="area-chip${activeArea===a?' on':''}" onclick="setArea('${a}',null)">${a}<span style="opacity:.6;font-size:10px;margin-left:3px">${areaCounts[a]}</span></button>`
+    ).join('');
+
+  // Update "もっと見る" link
+  const moreEl = document.getElementById('moreLink');
+  if (moreEl) moreEl.href = AREA_URL[activeArea] || 'https://myhome.nifty.com/rent/tokyo/';
+}
+
+/* ─────────────────────────────────────────────
+   RENDER
+───────────────────────────────────────────── */
+function render() {
+  renderBreadcrumb();
+
+  const list = PROPS.filter(p => {
+    if (activeArea && p.area !== activeArea) return false;
+    if (p.price > maxPrice) return false;
+    if (p.size < minSize) return false;
+    if (graphFilter) {
+      if (graphFilter.type === 'layout' && getLayoutCat(p.layout) !== graphFilter.cat) return false;
+      if (graphFilter.type === 'price'  && getPriceCat(p.price)   !== graphFilter.cat) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('propCnt').textContent = list.length;
+  const grid = document.getElementById('pgrid');
+
+  if (!list.length) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">条件に合う物件が見つかりません</div>
+        <div class="empty-sub">フィルターを調整するか <a href="${AREA_URL[activeArea]||'https://myhome.nifty.com/rent/tokyo/'}" target="_blank" style="color:var(--primary)">niftyで直接検索</a> してください</div>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(card).join('');
+  loadAllImages(list); // fetch real photos async
+}
+
+function card(p) {
+  const C = 2 * Math.PI * 15; // circumference ≈ 94.25
+  const filled = C * p.score / 100;
+  const color = p.score >= 90 ? 'var(--primary)' : p.score >= 80 ? 'var(--cyan)' : 'var(--green)';
+
+  return `
+  <article class="pcard" onclick="openModal(${p.id})">
+    <div class="cimg-wrap">
+      <div class="cimg-skel" id="skel_${p.id}"></div>
+      <img class="cimg" id="cimg_${p.id}" src="" alt="${p.title}" style="opacity:0">
+      <div class="cimg-grad"></div>
+
+      <div class="mbadge">
+        <div class="ring-wrap">
+          <svg width="36" height="36" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"/>
+            <circle cx="18" cy="18" r="15" fill="none" stroke="${color}" stroke-width="3"
+              stroke-dasharray="${filled.toFixed(1)} ${(C - filled).toFixed(1)}" stroke-linecap="round"/>
+          </svg>
+          <div class="ring-pct" style="color:${color}">${p.score}%</div>
+        </div>
+        <div>
+          <div class="mi-label">AIマッチ</div>
+          <div class="mi-reason">${p.reason}</div>
+        </div>
+      </div>
+
+      <div class="price-bar">
+        <div class="pbubble">
+          <span class="pamt">${p.price}</span>
+          <span class="punit">万円/月</span>
+        </div>
+        <div class="fav" onclick="event.stopPropagation();toggleFav(this)">♡</div>
+      </div>
+    </div>
+    <div class="cbody">
+      <h3 class="ctitle">${p.title}</h3>
+      <div class="cmeta">
+        <div class="cmeta-i">🏠 ${p.layout}</div>
+        <div class="cmeta-i">⬛ ${p.size}㎡</div>
+        <div class="cmeta-i">🚶 ${p.walk}</div>
+      </div>
+      <div class="insight">
+        <div class="insight-lbl">✦ AIインサイト</div>
+        <div class="insight-txt">${p.insight}</div>
+      </div>
+      <div class="ctags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </div>
+  </article>`;
+}
+
+function toggleFav(el) {
+  const on = el.textContent === '♥';
+  el.textContent = on ? '♡' : '♥';
+  el.style.color = on ? '' : '#f43f5e';
+  toast(on ? 'お気に入りから削除しました' : '♥ お気に入りに追加しました！');
+}
+
+/* ─────────────────────────────────────────────
+   FILTER
+───────────────────────────────────────────── */
+function onFilter() {
+  maxPrice = +document.getElementById('priceR').value;
+  minSize  = +document.getElementById('sizeR').value;
+  document.getElementById('prLbl').textContent = `${maxPrice}万円`;
+  document.getElementById('szLbl').textContent = `${minSize}㎡`;
+  render();
+  refreshAiMsg();
+}
+
+function toggleL(btn) { btn.classList.toggle('on'); render(); }
+
+function setArea(area, el) {
+  activeArea = area;
+  graphFilter = null; // reset graph filter when area changes
+  updateGraphHighlight();
+  // Sync mobile chip bar
+  document.querySelectorAll('#chipBar .chip').forEach(c => {
+    c.classList.toggle('on', el ? c === el : c.textContent === (area||'すべて'));
+  });
+  document.getElementById('areaTitle').textContent = area ? `${area}のおすすめ` : '東京のおすすめ';
+  const gnEl = document.getElementById('graphNote');
+  if (gnEl) gnEl.textContent = area ? `${area}で絞り込み中` : 'エリアを選択して物件を絞り込む';
+  render(); // calls renderBreadcrumb() inside
+  refreshAiMsg();
+}
+
+/* ─────────────────────────────────────────────
+   SEARCH → NIFTY
+───────────────────────────────────────────── */
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  let url = 'https://myhome.nifty.com/rent/tokyo/';
+  if (activeArea) {
+    const map = {
+      '渋谷区':'shibuya','新宿区':'shinjuku','世田谷区':'setagaya',
+      '港区':'minato','中野区':'nakano','目黒区':'meguro',
+      '品川区':'shinagawa','杉並区':'suginami'
+    };
+    if (map[activeArea]) url = `https://myhome.nifty.com/rent/tokyo/${map[activeArea]}/`;
+  }
+  window.open(url, '_blank');
+}
+
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
+
+/* ─────────────────────────────────────────────
+   AI MESSAGES
+───────────────────────────────────────────── */
+const AI_MSGS = [
+  'こんにちは！どのような暮らしをお探しですか？エリアや予算、こだわりをお気軽にどうぞ。',
+  '予算を抑えめですね！中野・杉並エリアはコスパ抜群で、AIスコアも高い物件が多いです。',
+  'プレミアム物件をお探しですね。港区・渋谷区のタワーマンションが候補に入ります！',
+  `${activeArea || '東京'}は人気エリア！現在の空室率は低め。気になる物件はお早めにどうぞ。`,
+];
+
+function typewrite(el, text, speed=28) {
+  el.innerHTML = '';
+  let i = 0;
+  function step() {
+    if (i < text.length) { el.innerHTML += text[i++]; setTimeout(step, speed); }
+    else el.innerHTML += '<span class="cursor"></span>';
+  }
+  step();
+}
+
+function refreshAiMsg() {
+  const el = document.getElementById('aiMsg');
+  let msg = AI_MSGS[0];
+  if (maxPrice < 12) msg = '予算12万円以下ですね！中野・杉並・板橋エリアのコスパ物件をAIが厳選しました。';
+  else if (maxPrice > 30) msg = 'プレミアム物件をお探しですね。港区・渋谷区のタワーマンションが候補に入ります！';
+  else if (activeArea) msg = `${activeArea}は人気エリア！現在の空室率は低め。気になる物件はお早めにどうぞ。`;
+  typewrite(el, msg);
+}
+
+function useChip(txt) {
+  document.getElementById('searchInput').value = txt;
+  toast(`「${txt}」で条件を設定しました`);
+  refreshAiMsg();
+}
+
+/* ─────────────────────────────────────────────
+   MODAL
+───────────────────────────────────────────── */
+function openModal(id) {
+  const p = PROPS.find(x => x.id === id);
+  if (!p) return;
+
+  // Reset modal image state
+  const mImg = document.getElementById('mImg');
+  const mSkel = document.getElementById('mSkel');
+  mImg.style.opacity = '0'; mSkel.style.display = '';
+
+  document.getElementById('mTitle').textContent = p.title;
+  document.getElementById('mAddr').textContent = p.addr;
+  document.getElementById('mPrice').innerHTML = `${p.price}<span>万円</span>`;
+  document.getElementById('mLayout').textContent = p.layout;
+  document.getElementById('mSize').innerHTML = `${p.size}<span>㎡</span>`;
+  document.getElementById('mWalk').textContent = p.walk;
+  document.getElementById('mInsight').textContent = p.insight;
+  document.getElementById('mPred').textContent = p.pred;
+  document.getElementById('mLink').href = p.niftyUrl;
+
+  // Area navigation link
+  const areaUrl = AREA_URL[p.area] || 'https://myhome.nifty.com/rent/tokyo/';
+  document.getElementById('mAreaLink').href = areaUrl;
+  document.getElementById('mAreaLinkTxt').textContent = p.area;
+
+  document.getElementById('modalOv').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Fetch real photo
+  fetchNiftyImage(p.id).then(url => {
+    applyImage(mImg, mSkel, url, p.img);
+  });
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOv')) {
+    document.getElementById('modalOv').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+function saveCondition() { toast('🤖 条件をAIに記憶させました！次回以降、優先的に提案します。'); }
+
+/* ─────────────────────────────────────────────
+   CHAT
+───────────────────────────────────────────── */
+const chatReplies = [
+  'なるほど！その条件で候補が見つかりました。上のカードから気になる物件を選んでみてください。',
+  '了解です！エリアや予算をもう少し教えていただければ、より精度の高い提案ができます。',
+  'その条件は人気が高いですね。現在の市場では早めに動くことをお勧めします！',
+  '良い選択肢だと思います！近隣エリアも候補に入れるとコスパの高い物件が見つかるかも。',
+  'その条件でniftyの詳細検索を使うと、さらに多くの物件が見つかります！',
+];
+let replyIdx = 0;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chatPanel').classList.toggle('open', chatOpen);
+}
+
+function sendChat() {
+  const inp = document.getElementById('chatIn');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  const box = document.getElementById('chatMsgs');
+  box.innerHTML += `<div class="msg user">${escHtml(msg)}</div>`;
+  inp.value = '';
+  const tid = 'typ_' + Date.now();
+  box.innerHTML += `<div class="msg ai" id="${tid}"><div class="dots"><span></span><span></span><span></span></div></div>`;
+  box.scrollTop = box.scrollHeight;
+  setTimeout(() => {
+    const el = document.getElementById(tid);
+    if (el) el.textContent = chatReplies[replyIdx++ % chatReplies.length];
+    box.scrollTop = box.scrollHeight;
+  }, 1100 + Math.random() * 700);
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ─────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────── */
+function toast(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(15,23,42,.97);backdrop-filter:blur(20px);border:1px solid rgba(99,102,241,.3);border-radius:14px;padding:12px 24px;font-size:13px;font-weight:600;color:var(--text);z-index:9999;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.4);opacity:0;transition:all .3s;';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
+  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(16px)'; setTimeout(()=>el.remove(), 320); }, 2600);
+}
+
+function showMobileFilter() { toast('PCでフィルターをご利用ください'); }
+
+/* ─────────────────────────────────────────────
+   D3 FORCE-DIRECTED GRAPH
+───────────────────────────────────────────── */
+let d3Simulation, d3Svg, d3G, d3LinkSel, d3NodeSel;
+let graphFavorites = JSON.parse(localStorage.getItem('nifty_graph_fav') || '[]');
+let graphPins      = JSON.parse(localStorage.getItem('nifty_graph_pins') || '{}');
+
+function getLayoutCat(layout) {
+  if (/^1[RK]$/.test(layout)) return 'cat-1R';
+  if (/SLDK|1LDK|1DK/.test(layout)) return 'cat-1LDK';
+  return 'cat-2LDK';
+}
+function getPriceCat(price) {
+  if (price < 10) return 'price-low';
+  if (price < 20) return 'price-mid';
+  return 'price-high';
+}
+function getNodeColor(group) {
+  return { hub:'#eb6100', layout:'#1a8cff', price:'#10b981',
+           property:'#56b3b4', favorite:'#ec4899' }[group] || '#94a3b8';
+}
+
+function buildGraphData() {
+  const nodes = [], links = [];
+
+  // hub — big central node (matching reference "station" concept)
+  nodes.push({ id:'hub', label:'東京物件ネット', group:'hub', r:28 });
+
+  // layout cats
+  const layoutCats = [
+    { id:'cat-1R',   label:'1R・1K',      group:'layout' },
+    { id:'cat-1LDK', label:'1DK・1LDK',  group:'layout' },
+    { id:'cat-2LDK', label:'2LDK以上',    group:'layout' },
+  ];
+  layoutCats.forEach(n => { nodes.push({...n, r:16}); links.push({source:'hub', target:n.id, type:'category'}); });
+
+  // price cats
+  const priceCats = [
+    { id:'price-low',  label:'〜10万円',  group:'price' },
+    { id:'price-mid',  label:'10〜20万円', group:'price' },
+    { id:'price-high', label:'20万円〜',  group:'price' },
+  ];
+  priceCats.forEach(n => { nodes.push({...n, r:16}); links.push({source:'hub', target:n.id, type:'category'}); });
+
+  // property nodes
+  PROPS.forEach(p => {
+    const isFav = graphFavorites.includes(p.id);
+    nodes.push({ id:'prop-'+p.id, label:p.title, group: isFav ? 'favorite' : 'property',
+                 propId:p.id, r:12 });
+    links.push({source: getLayoutCat(p.layout), target:'prop-'+p.id, type:'relation'});
+    links.push({source: getPriceCat(p.price),   target:'prop-'+p.id, type:'relation'});
+  });
+
+  // dynamic favorite group node (like reference) — appears when favorites exist
+  if (graphFavorites.length > 0) {
+    nodes.push({ id:'cat-fav', label:'お気に入り', group:'favorite', r:20 });
+    links.push({ source:'hub', target:'cat-fav', type:'category' });
+    graphFavorites.forEach(favId => {
+      links.push({ source:'cat-fav', target:'prop-'+favId, type:'favorite' });
+    });
+  }
+
+  return { nodes, links };
+}
+
+function initD3Graph() {
+  const container = document.getElementById('graphContainer');
+  const svg = d3.select('#graphSvg');
+  svg.selectAll('*').remove();
+
+  const W = container.clientWidth || 480;
+  const H = container.clientHeight || 340;
+
+  // Defs: grid + glow filter
+  const defs = svg.append('defs');
+
+  // Orange-tinted grid for dark background
+  defs.append('pattern')
+    .attr('id','grid').attr('width',30).attr('height',30)
+    .attr('patternUnits','userSpaceOnUse')
+    .append('path').attr('d','M 30 0 L 0 0 0 30')
+    .attr('fill','none').attr('stroke','rgba(235,97,0,0.08)').attr('stroke-width','0.7');
+  svg.append('rect').attr('width','100%').attr('height','100%').attr('fill','url(#grid)');
+
+  // Glow filter
+  const f = defs.append('filter').attr('id','nodeGlow').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+  f.append('feGaussianBlur').attr('stdDeviation','4').attr('result','blur');
+  const merge = f.append('feMerge');
+  merge.append('feMergeNode').attr('in','blur');
+  merge.append('feMergeNode').attr('in','SourceGraphic');
+
+  // Zoom group
+  d3G = svg.append('g').attr('class','zoom-g');
+
+  // Zoom behaviour
+  const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', e => {
+    d3G.attr('transform', e.transform);
+  });
+  svg.call(zoom);
+  svg.call(zoom.transform, d3.zoomIdentity.translate(W * 0.1, H * 0.1).scale(0.85));
+
+  // Link & node groups (links drawn first, under nodes)
+  d3LinkSel = d3G.append('g').attr('class','links');
+  d3NodeSel = d3G.append('g').attr('class','nodes');
+
+  d3Svg = svg;
+
+  const { nodes, links } = buildGraphData();
+
+  // Restore pinned positions
+  nodes.forEach(n => {
+    if (graphPins[n.id]) { n.fx = graphPins[n.id].x; n.fy = graphPins[n.id].y; }
+  });
+
+  // Simulation — tuned to match reference
+  d3Simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id)
+      .distance(d => d.type === 'category' ? 170 : 90)
+      .strength(0.55))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collide', d3.forceCollide(d => d.r + 18))
+    .on('tick', ticked);
+
+  updateD3Graph(nodes, links);
+}
+
+function updateD3Graph(nodes, links) {
+  if (!d3G) return;
+
+  /* ── Links — join() pattern ── */
+  d3LinkSel.selectAll('line')
+    .data(links, d => (d.source.id || d.source) + '-' + (d.target.id || d.target))
+    .join(
+      enter => enter.append('line')
+        .attr('stroke', d => d.type === 'favorite' ? 'rgba(236,72,153,0.7)'
+                           : d.type === 'category'  ? 'rgba(235,97,0,0.45)'
+                                                    : 'rgba(255,255,255,0.12)')
+        .attr('stroke-width', d => d.type === 'category' ? 2 : 1)
+        .attr('stroke-dasharray', d => d.type === 'relation' ? '5 4' : null),
+      update => update,
+      exit => exit.remove()
+    );
+
+  /* ── Drag behaviour ── */
+  let _dragMoved = false;
+  const drag = d3.drag()
+    .on('start', (e, d) => {
+      _dragMoved = false;
+      if (!e.active) d3Simulation.alphaTarget(0.3).restart();
+      d.fx = d.x; d.fy = d.y;
+    })
+    .on('drag', (e, d) => {
+      _dragMoved = true;
+      d.fx = e.x; d.fy = e.y;
+    })
+    .on('end', (e, d) => {
+      if (!e.active) d3Simulation.alphaTarget(0);
+      if (_dragMoved) {
+        // pin in place — show pinned stroke (#64748b)
+        graphPins[d.id] = { x: d.fx, y: d.fy };
+        localStorage.setItem('nifty_graph_pins', JSON.stringify(graphPins));
+        d3.select(d._el).select('circle')
+          .attr('stroke', '#64748b')
+          .attr('stroke-width', 2);
+      }
+    });
+
+  /* ── Node groups — join() pattern ── */
+  const nodeJoin = d3NodeSel.selectAll('g.node')
+    .data(nodes, d => d.id)
+    .join(
+      enter => {
+        const g = enter.append('g').attr('class','node').style('cursor','pointer');
+
+        g.each(function(d) { d._el = this; }); // store DOM ref for drag-end stroke update
+
+        g.call(drag)
+          .on('dblclick', (e, d) => {
+            e.stopPropagation();
+            // unpin — restore floating stroke
+            d.fx = null; d.fy = null;
+            delete graphPins[d.id];
+            localStorage.setItem('nifty_graph_pins', JSON.stringify(graphPins));
+            d3Simulation.alphaTarget(0.2).restart();
+            d3.select(d._el).select('circle')
+              .attr('stroke', d.group === 'hub' ? '#ffffff' : 'rgba(255,255,255,0.6)')
+              .attr('stroke-width', d.group === 'hub' ? 3 : 1.5);
+          })
+          .on('click', (e, d) => {
+            if (_dragMoved) return;
+            if (d.propId) { openModal(d.propId); return; }
+            // Category / hub → filter list
+            if (d.group === 'hub') {
+              graphFilter = null;
+            } else if (d.group === 'layout') {
+              graphFilter = (graphFilter && graphFilter.cat === d.id) ? null : { type:'layout', cat:d.id };
+            } else if (d.group === 'price') {
+              graphFilter = (graphFilter && graphFilter.cat === d.id) ? null : { type:'price', cat:d.id };
+            } else if (d.group === 'favorite') {
+              graphFilter = (graphFilter && graphFilter.cat === d.id) ? null : { type:'favorite', cat:d.id };
+            }
+            updateGraphHighlight();
+            const gnEl = document.getElementById('graphNote');
+            if (gnEl) gnEl.textContent = graphFilter
+              ? `${d.label}で絞り込み中（再クリックで解除）`
+              : 'ノードをクリックして絞り込む | ドラッグでピン留め | ダブルクリックで解除';
+            render();
+          });
+
+        // Circle — stroke indicates pin state (white=floating, #64748b=pinned)
+        g.append('circle')
+          .attr('r', d => d.r)
+          .attr('fill', d => getNodeColor(d.group))
+          .attr('stroke', d => graphPins[d.id] ? '#64748b' : (d.group === 'hub' ? '#ffffff' : 'rgba(255,255,255,0.6)'))
+          .attr('stroke-width', d => graphPins[d.id] ? 2 : (d.group === 'hub' ? 3 : 1.5))
+          .attr('filter', d => d.group === 'hub' || d.group === 'favorite' ? 'url(#nodeGlow)' : null)
+          .on('mouseover', function(e, d) {
+            d3.select(this).attr('r', d.r + 4).attr('filter', 'url(#nodeGlow)');
+          })
+          .on('mouseout', function(e, d) {
+            d3.select(this).attr('r', d.r)
+              .attr('filter', d.group === 'hub' || d.group === 'favorite' ? 'url(#nodeGlow)' : null);
+          });
+
+        // Label — white fill with dark paint-order stroke for dark bg readability
+        g.append('text')
+          .attr('dy', d => d.group === 'hub' ? 4 : d.r + 13)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', d => d.group === 'hub' ? 11 : d.group === 'property' || d.group === 'favorite' ? 8 : 9)
+          .attr('font-weight', d => d.group === 'hub' ? '700' : '500')
+          .attr('fill', '#ffffff')
+          .attr('paint-order', 'stroke')
+          .attr('stroke', 'rgba(0,0,0,0.75)')
+          .attr('stroke-width', '2.5')
+          .style('text-shadow', '0px 1px 3px rgba(0,0,0,0.9)')
+          .text(d => d.label.length > 9 ? d.label.slice(0, 9) + '…' : d.label);
+
+        return g;
+      },
+      update => update,
+      exit => exit.remove()
+    );
+}
+
+function ticked() {
+  d3LinkSel.selectAll('line')
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  d3NodeSel.selectAll('g.node')
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+}
+
+function updateGraphHighlight() {
+  if (!d3NodeSel) return;
+  d3NodeSel.selectAll('g.node circle')
+    .attr('stroke', d => {
+      // active filter: highlight selected cat node in orange
+      if (graphFilter && d.id === graphFilter.cat) return '#eb6100';
+      // pinned nodes: grey stroke
+      if (d.fx != null) return '#64748b';
+      // hub: bright white
+      return d.group === 'hub' ? '#ffffff' : 'rgba(255,255,255,0.6)';
+    })
+    .attr('stroke-width', d => {
+      if (graphFilter && d.id === graphFilter.cat) return 3.5;
+      if (d.fx != null) return 2;
+      return d.group === 'hub' ? 3 : 1.5;
+    })
+    .attr('opacity', d => {
+      if (!graphFilter) return 1;
+      if (d.id === graphFilter.cat || d.group === 'hub') return 1;
+      if (d.propId) {
+        const p = PROPS.find(x => x.id === d.propId);
+        if (p) {
+          let match = false;
+          if (graphFilter.type === 'layout') match = getLayoutCat(p.layout) === graphFilter.cat;
+          else if (graphFilter.type === 'price') match = getPriceCat(p.price) === graphFilter.cat;
+          else if (graphFilter.type === 'favorite') match = graphFavorites.includes(p.id);
+          return match ? 1 : 0.25;
+        }
+      }
+      // other category nodes
+      return (d.group === graphFilter.type && d.id !== graphFilter.cat) ? 0.25 : 0.55;
+    });
+}
+
+/* ─────────────────────────────────────────────
+   NEURAL NETWORK BG
+───────────────────────────────────────────── */
+const nc = document.getElementById('neural');
+const nx = nc.getContext('2d');
+let particles = [];
+
+function initNeural() {
+  nc.width = window.innerWidth; nc.height = window.innerHeight;
+  particles = [];
+  const n = Math.min(70, Math.floor(window.innerWidth * window.innerHeight / 18000));
+  for (let i=0;i<n;i++) particles.push({
+    x: Math.random()*nc.width, y: Math.random()*nc.height,
+    vx:(Math.random()-.5)*.32, vy:(Math.random()-.5)*.32, r:Math.random()*2+.7,
+    hue: Math.random() < 0.55 ? 'orange' : 'blue'
+  });
+}
+
+function drawNeural() {
+  nx.clearRect(0,0,nc.width,nc.height);
+  particles.forEach(p => {
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>nc.width) p.vx*=-1;
+    if(p.y<0||p.y>nc.height) p.vy*=-1;
+    nx.beginPath(); nx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    nx.fillStyle = p.hue==='orange' ? 'rgba(235,97,0,.5)' : 'rgba(26,140,255,.4)';
+    nx.fill();
+  });
+  for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++) {
+    const dx=particles[j].x-particles[i].x, dy=particles[j].y-particles[i].y;
+    const d=Math.hypot(dx,dy);
+    if(d<140) {
+      nx.beginPath(); nx.moveTo(particles[i].x,particles[i].y); nx.lineTo(particles[j].x,particles[j].y);
+      const alpha=(1-d/140)*.13;
+      nx.strokeStyle = (particles[i].hue==='orange'&&particles[j].hue==='orange')
+        ? `rgba(235,97,0,${alpha})`
+        : `rgba(100,160,255,${alpha})`;
+      nx.lineWidth=.65; nx.stroke();
+    }
+  }
+  requestAnimationFrame(drawNeural);
+}
+
+/* ─────────────────────────────────────────────
+   CLOCK
+───────────────────────────────────────────── */
+function tick() {
+  const s = new Date().toLocaleTimeString('ja-JP',{hour12:false});
+  const el = document.getElementById('clock');
+  if(el) el.textContent = `SYS ${s}`;
+}
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  // loading txt cycle
+  const txts = ['AI INITIALIZING...','NEURAL NET READY','DATA LINKING...','NIFTY CONNECTED ✓'];
+  let ti=0;
+  const ltxt = document.getElementById('loadTxt');
+  const ltint = setInterval(()=>{ if(++ti<txts.length) ltxt.textContent=txts[ti]; }, 320);
+
+  setTimeout(()=>{
+    clearInterval(ltint);
+    document.getElementById('loading').classList.add('out');
+    refreshAiMsg();
+  }, 1350);
+
+  initD3Graph();
+  initNeural(); drawNeural();
+  renderBreadcrumb();
+  render();
+  tick(); setInterval(tick, 1000);
+
+  // init display
+  maxPrice = +document.getElementById('priceR').value;
+  document.getElementById('prLbl').textContent = `${maxPrice}万円`;
+  document.getElementById('szLbl').textContent = `${document.getElementById('sizeR').value}㎡`;
+});
+
+window.addEventListener('resize', ()=>{ initNeural(); initD3Graph(); });
+</script>
+</body>
+</html>
