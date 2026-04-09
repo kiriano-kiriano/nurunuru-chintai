@@ -1494,8 +1494,9 @@ function render() {
     if (p.price > maxPrice) return false;
     if (p.size < minSize) return false;
     if (graphFilter) {
-      if (graphFilter.type === 'layout' && getLayoutCat(p.layout) !== graphFilter.cat) return false;
-      if (graphFilter.type === 'price'  && getPriceCat(p.price)   !== graphFilter.cat) return false;
+      if (graphFilter.type === 'layout'   && getLayoutCat(p.layout) !== graphFilter.cat) return false;
+      if (graphFilter.type === 'price'    && getPriceCat(p.price)   !== graphFilter.cat) return false;
+      if (graphFilter.type === 'favorite' && !graphFavorites.includes(p.id))             return false;
     }
     return true;
   });
@@ -1549,7 +1550,7 @@ function card(p) {
           <span class="pamt">${p.price}</span>
           <span class="punit">万円/月</span>
         </div>
-        <div class="fav" onclick="event.stopPropagation();toggleFav(this)">♡</div>
+        <div class="fav" onclick="event.stopPropagation();toggleFav(this,${p.id})" style="${graphFavorites.includes(p.id)?'color:#f43f5e':''}">${graphFavorites.includes(p.id)?'♥':'♡'}</div>
       </div>
     </div>
     <div class="cbody">
@@ -1568,11 +1569,19 @@ function card(p) {
   </article>`;
 }
 
-function toggleFav(el) {
-  const on = el.textContent === '♥';
+function toggleFav(el, pid) {
+  const on = graphFavorites.includes(pid);
+  if (on) {
+    graphFavorites = graphFavorites.filter(id => id !== pid);
+  } else {
+    graphFavorites.push(pid);
+  }
+  localStorage.setItem('nifty_graph_fav', JSON.stringify(graphFavorites));
   el.textContent = on ? '♡' : '♥';
-  el.style.color = on ? '' : '#f43f5e';
+  el.style.color  = on ? '' : '#f43f5e';
   toast(on ? 'お気に入りから削除しました' : '♥ お気に入りに追加しました！');
+  // グラフを再構築（cat-favノード追加/削除 + ノード色変更）
+  initD3Graph();
 }
 
 /* ─────────────────────────────────────────────
