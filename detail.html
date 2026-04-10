@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>物件詳細 — ニフティ不動産AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #060d1f;
+  --surface: rgba(255,255,255,0.04);
+  --surface2: rgba(255,255,255,0.07);
+  --card: rgba(15,26,54,0.95);
+  --primary: #eb6100;
+  --primary-glow: rgba(235,97,0,0.22);
+  --cyan: #56b3b4;
+  --ai-blue: #1a8cff;
+  --ai-blue-glow: rgba(26,140,255,0.22);
+  --violet: #7c3aed;
+  --green: #059669;
+  --amber: #d97706;
+  --rose: #e11d48;
+  --text: #e8eaf0;
+  --muted: #8899bb;
+  --border: rgba(255,255,255,0.08);
+  --border-primary: rgba(235,97,0,0.3);
+  --r: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'Noto Sans JP','Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  min-height:100vh;
+}
+
+/* ──── SCROLLBAR ──── */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(26,140,255,0.25); border-radius:3px; }
+
+/* ──── NEURAL CANVAS ──── */
+#neural { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.13; }
+
+/* ──── AURORA ──── */
+#aurora { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.blob { position:absolute; border-radius:50%; filter:blur(100px); animation:blobFloat 20s ease-in-out infinite; }
+.b1 { width:700px; height:700px; background:rgba(26,140,255,.1); top:-15%; right:-10%; animation-delay:0s; }
+.b2 { width:500px; height:500px; background:rgba(235,97,0,.08); bottom:-10%; left:-5%; animation-delay:-7s; }
+.b3 { width:350px; height:350px; background:rgba(124,58,237,.08); top:40%; left:30%; animation-delay:-14s; }
+@keyframes blobFloat { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-40px) scale(1.07)} 66%{transform:translate(-30px,30px) scale(.94)} }
+
+/* ──── SCAN LINE ──── */
+.scan-line { position:fixed; left:0; right:0; height:2px; z-index:9998; pointer-events:none; background:linear-gradient(90deg,transparent,rgba(26,140,255,.3),transparent); animation:scanDown 9s linear infinite; }
+@keyframes scanDown { from{top:-2px} to{top:100vh} }
+
+/* ──── WRAP ──── */
+.wrap { position:relative; z-index:10; }
+
+/* ──── STATUS BAR ──── */
+.status-bar {
+  display:flex; align-items:center; gap:20px; padding:0 24px; height:32px;
+  background:rgba(6,13,31,0.98); border-bottom:1px solid rgba(26,140,255,.15);
+  font-family:'Inter',monospace; font-size:10px; color:rgba(200,220,255,0.45); letter-spacing:.5px;
+}
+.s-dot { width:6px; height:6px; border-radius:50%; animation:blink 1.5s infinite; }
+.s-dot.g { background:#059669; box-shadow:0 0 5px #059669; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.s-item { display:flex; align-items:center; gap:7px; }
+.s-ml { margin-left:auto; }
+
+/* ──── HEADER ──── */
+.header {
+  position:sticky; top:0; z-index:100;
+  backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px);
+  background:rgba(6,13,31,0.88);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 2px 32px rgba(0,0,0,.5);
+}
+.header-in {
+  max-width:1200px; margin:0 auto; padding:0 24px;
+  height:60px; display:flex; align-items:center; gap:16px;
+}
+.back-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 16px; border-radius:20px;
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;
+  text-decoration:none; transition:all .2s;
+  flex-shrink:0;
+}
+.back-btn:hover { background:rgba(235,97,0,.15); border-color:var(--primary); color:#fff; }
+.logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.logo-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--primary),var(--violet)); border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 3px 14px var(--primary-glow); }
+.logo-txt { font-size:14px; font-weight:900; color:#fff; }
+.logo-txt em { color:var(--primary); font-style:normal; }
+.breadcrumb { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-left:auto; flex-shrink:0; }
+.breadcrumb a { color:var(--muted); text-decoration:none; }
+.breadcrumb a:hover { color:var(--primary); }
+.breadcrumb span { color:rgba(255,255,255,.2); }
+
+/* ──── LOADING SCREEN ──── */
+#loading {
+  position:fixed; inset:0; z-index:9999;
+  background:radial-gradient(ellipse at center, #0f1a36 0%, #060d1f 70%);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;
+  transition:opacity .7s cubic-bezier(.4,0,.2,1), visibility .7s;
+}
+#loading.out { opacity:0; visibility:hidden; }
+.load-ring { width:72px; height:72px; border-radius:50%; border:2.5px solid rgba(235,97,0,.12); border-top:2.5px solid #eb6100; border-right:2.5px solid rgba(235,97,0,.4); animation:spinRing 1s linear infinite; }
+@keyframes spinRing { to { transform:rotate(360deg); } }
+.load-txt { font-size:10px; letter-spacing:4px; color:rgba(255,200,150,.4); text-transform:uppercase; }
+
+/* ──── MAIN CONTENT ──── */
+.main { max-width:1200px; margin:0 auto; padding:32px 24px 80px; }
+
+/* ──── PHOTO GALLERY ──── */
+.gallery-section { margin-bottom:28px; }
+.gallery-wrap { position:relative; border-radius:var(--r-xl); overflow:hidden; background:rgba(0,0,0,.3); }
+.gallery-main { width:100%; height:460px; object-fit:cover; display:block; transition:opacity .5s; }
+.gallery-skel { position:absolute; inset:0; background:linear-gradient(135deg,rgba(26,140,255,.08),rgba(235,97,0,.08)); animation:pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.gallery-badges { position:absolute; top:18px; left:18px; display:flex; gap:8px; flex-wrap:wrap; }
+.badge { padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; backdrop-filter:blur(12px); letter-spacing:.5px; }
+.badge-orange { background:rgba(235,97,0,.85); color:#fff; border:1px solid rgba(255,255,255,.2); }
+.badge-blue { background:rgba(26,140,255,.85); color:#fff; border:1px solid rgba(255,255,255,.2); }
+.badge-green { background:rgba(5,150,105,.85); color:#fff; border:1px solid rgba(255,255,255,.2); }
+.gallery-score { position:absolute; top:18px; right:18px; background:rgba(6,13,31,.85); border:1px solid rgba(235,97,0,.4); border-radius:16px; padding:8px 14px; backdrop-filter:blur(12px); text-align:center; }
+.gallery-score-num { font-size:22px; font-weight:900; background:linear-gradient(135deg,#eb6100,#f97316); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.gallery-score-lbl { font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+.gallery-thumbs { display:flex; gap:8px; margin-top:8px; overflow-x:auto; padding-bottom:4px; }
+.gallery-thumbs::-webkit-scrollbar { height:3px; }
+.thumb { width:80px; height:54px; border-radius:8px; object-fit:cover; cursor:pointer; opacity:.6; border:2px solid transparent; transition:all .2s; flex-shrink:0; }
+.thumb.active, .thumb:hover { opacity:1; border-color:var(--primary); }
+
+/* ──── TWO COLUMN ──── */
+.two-col { display:grid; grid-template-columns:1fr 340px; gap:24px; margin-bottom:24px; }
+@media(max-width:900px) { .two-col { grid-template-columns:1fr; } }
+
+/* ──── PROP TITLE ──── */
+.prop-head { margin-bottom:20px; }
+.prop-status { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.prop-status-txt { font-size:11px; color:var(--primary); font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.prop-title-main { font-size:26px; font-weight:900; color:#fff; line-height:1.2; margin-bottom:6px; }
+.prop-addr { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.prop-walk { font-size:13px; color:var(--ai-blue); font-weight:600; }
+
+/* ──── SECTION CARD ──── */
+.sec-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; margin-bottom:20px; backdrop-filter:blur(20px); }
+.sec-title { font-size:12px; font-weight:700; color:var(--primary); letter-spacing:2px; text-transform:uppercase; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+.sec-title::before { content:''; width:3px; height:14px; background:var(--primary); border-radius:2px; display:inline-block; }
+
+/* ──── ACCESS LIST ──── */
+.access-list { display:flex; flex-direction:column; gap:10px; }
+.access-item { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--surface); border-radius:10px; border:1px solid var(--border); }
+.access-line { font-size:10px; color:var(--muted); }
+.access-station { font-size:14px; font-weight:700; color:#fff; }
+.access-walk { margin-left:auto; font-size:12px; color:var(--ai-blue); font-weight:700; background:rgba(26,140,255,.12); padding:3px 10px; border-radius:10px; }
+.access-icon { font-size:16px; }
+
+/* ──── EQUIP TAGS ──── */
+.equip-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.equip-tag { padding:5px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--text); font-weight:500; transition:all .2s; }
+.equip-tag:hover { border-color:var(--primary); color:var(--primary); }
+.equip-tag.highlight { background:rgba(235,97,0,.12); border-color:rgba(235,97,0,.35); color:var(--primary); }
+
+/* ──── SPECS TABLE ──── */
+.specs-table { width:100%; border-collapse:collapse; }
+.specs-table tr { border-bottom:1px solid rgba(255,255,255,.05); }
+.specs-table tr:last-child { border-bottom:none; }
+.specs-table th { width:130px; padding:11px 14px; font-size:12px; color:var(--muted); font-weight:600; text-align:left; vertical-align:top; }
+.specs-table td { padding:11px 14px; font-size:13px; color:var(--text); }
+.specs-table td a { color:var(--ai-blue); text-decoration:none; }
+.specs-table td a:hover { text-decoration:underline; }
+
+/* ──── AI INSIGHT ──── */
+.insight-box { background:linear-gradient(135deg,rgba(26,140,255,.07),rgba(235,97,0,.05)); border:1px solid rgba(26,140,255,.2); border-radius:var(--r); padding:18px; position:relative; overflow:hidden; }
+.insight-box::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(26,140,255,.5),transparent); }
+.insight-label { font-size:10px; color:var(--ai-blue); letter-spacing:2px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.insight-label::after { content:'●'; color:var(--primary); font-size:6px; animation:blink 1.5s infinite; }
+.insight-txt { font-size:13px; line-height:1.8; color:rgba(232,234,240,.85); }
+.pred-badge { display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:5px 12px; background:rgba(5,150,105,.15); border:1px solid rgba(5,150,105,.3); border-radius:20px; font-size:11px; color:#34d399; font-weight:600; }
+
+/* ──── SIDEBAR ──── */
+.sidebar-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:22px; margin-bottom:16px; backdrop-filter:blur(20px); position:sticky; top:80px; }
+.price-main { font-size:36px; font-weight:900; color:#fff; line-height:1; margin-bottom:4px; }
+.price-main span { font-size:16px; color:var(--muted); font-weight:400; }
+.price-mgmt { font-size:12px; color:var(--muted); margin-bottom:16px; }
+.price-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; }
+.price-item { background:var(--surface); border-radius:10px; padding:10px; }
+.price-lbl { font-size:10px; color:var(--muted); margin-bottom:3px; }
+.price-val { font-size:14px; font-weight:700; color:#fff; }
+.btn-primary { display:block; width:100%; padding:14px; background:linear-gradient(135deg,#eb6100,#f97316); border:none; border-radius:var(--r); color:#fff; font-size:14px; font-weight:700; cursor:pointer; text-align:center; margin-bottom:10px; transition:all .25s; font-family:inherit; box-shadow:0 4px 20px rgba(235,97,0,.35); }
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 28px rgba(235,97,0,.5); }
+.btn-secondary { display:block; width:100%; padding:12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; text-align:center; margin-bottom:10px; transition:all .25s; font-family:inherit; }
+.btn-secondary:hover { border-color:var(--primary); color:var(--primary); }
+.fav-btn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:10px; background:transparent; border:1px solid rgba(244,63,94,.3); border-radius:var(--r); color:#f43f5e; font-size:13px; font-weight:600; cursor:pointer; transition:all .25s; font-family:inherit; }
+.fav-btn:hover, .fav-btn.on { background:rgba(244,63,94,.1); border-color:#f43f5e; }
+.sidebar-nifty { display:block; margin-top:12px; text-align:center; font-size:11px; color:var(--muted); text-decoration:none; padding:8px; border-radius:8px; transition:all .2s; }
+.sidebar-nifty:hover { color:var(--ai-blue); background:var(--surface); }
+
+/* ──── HAPPINESS CHART ──── */
+.happiness-section { margin-bottom:24px; }
+.radar-wrap { display:flex; align-items:center; gap:36px; flex-wrap:wrap; }
+#radarChart { flex-shrink:0; }
+.radar-stats { flex:1; min-width:200px; }
+.radar-score-total { text-align:center; margin-bottom:20px; padding:16px; background:linear-gradient(135deg,rgba(235,97,0,.08),rgba(26,140,255,.08)); border-radius:var(--r); border:1px solid rgba(235,97,0,.2); }
+.radar-score-num { font-size:48px; font-weight:900; background:linear-gradient(135deg,#eb6100,#1a8cff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1; }
+.radar-score-lbl { font-size:11px; color:var(--muted); margin-top:4px; letter-spacing:2px; text-transform:uppercase; }
+.radar-axis-list { display:flex; flex-direction:column; gap:10px; }
+.radar-axis-item { display:flex; align-items:center; gap:10px; }
+.radar-axis-name { font-size:12px; color:var(--muted); width:80px; flex-shrink:0; }
+.radar-axis-bar { flex:1; height:5px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; }
+.radar-axis-fill { height:100%; border-radius:3px; transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+.radar-axis-val { font-size:12px; font-weight:700; width:30px; text-align:right; }
+
+/* ──── FUTURE DIARY ──── */
+.diary-section { margin-bottom:24px; }
+.diary-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.diary-ai-icon { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#1a8cff,#7c3aed); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 0 20px rgba(26,140,255,.4); flex-shrink:0; }
+.diary-ai-txt h3 { font-size:15px; font-weight:700; color:#fff; }
+.diary-ai-txt p { font-size:12px; color:var(--muted); margin-top:2px; }
+.diary-cards { display:flex; flex-direction:column; gap:16px; }
+.diary-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; position:relative; overflow:hidden; transition:all .3s; }
+.diary-card:hover { border-color:rgba(26,140,255,.3); transform:translateX(4px); }
+.diary-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:2px; }
+.diary-card.m1::before { background:linear-gradient(to bottom,#eb6100,#f97316); }
+.diary-card.m6::before { background:linear-gradient(to bottom,#1a8cff,#7c3aed); }
+.diary-card.m12::before { background:linear-gradient(to bottom,#059669,#06b6d4); }
+.diary-card-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.diary-date { font-size:11px; font-family:'Inter',monospace; color:var(--muted); letter-spacing:1px; }
+.diary-period { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:1px; }
+.m1 .diary-period { background:rgba(235,97,0,.15); color:var(--primary); }
+.m6 .diary-period { background:rgba(26,140,255,.15); color:var(--ai-blue); }
+.m12 .diary-period { background:rgba(5,150,105,.15); color:#34d399; }
+.diary-emoji { font-size:22px; margin-left:auto; }
+.diary-txt { font-size:13px; line-height:1.9; color:rgba(232,234,240,.8); position:relative; }
+.diary-txt.typing::after { content:'|'; color:var(--ai-blue); animation:blink .7s infinite; }
+.diary-tags { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.diary-tag { font-size:10px; color:var(--muted); background:var(--surface); border-radius:10px; padding:3px 8px; }
+
+/* ──── MAP ──── */
+#propMap { height:280px; border-radius:var(--r-lg); overflow:hidden; }
+
+/* ──── AGENCY ──── */
+.agency-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:22px; display:flex; gap:16px; align-items:flex-start; }
+.agency-icon { width:50px; height:50px; background:linear-gradient(135deg,rgba(26,140,255,.2),rgba(124,58,237,.2)); border:1px solid rgba(26,140,255,.2); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.agency-name { font-size:14px; font-weight:700; color:#fff; margin-bottom:4px; }
+.agency-info { font-size:12px; color:var(--muted); line-height:1.7; }
+.agency-tel { font-size:18px; font-weight:700; color:var(--primary); margin-top:6px; }
+
+/* ──── NEARBY ──── */
+.nearby-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+.nearby-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; cursor:pointer; transition:all .25s; text-decoration:none; }
+.nearby-card:hover { border-color:rgba(235,97,0,.3); transform:translateY(-2px); }
+.nearby-img { width:100%; height:110px; object-fit:cover; display:block; background:rgba(26,140,255,.1); }
+.nearby-info { padding:12px; }
+.nearby-price { font-size:16px; font-weight:700; color:var(--primary); }
+.nearby-title { font-size:12px; color:var(--text); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nearby-meta { font-size:11px; color:var(--muted); margin-top:3px; }
+
+/* ──── NIFTY LINK BTN ──── */
+.nifty-link-banner { display:flex; align-items:center; gap:16px; background:linear-gradient(135deg,rgba(235,97,0,.08),rgba(124,58,237,.08)); border:1px solid rgba(235,97,0,.25); border-radius:var(--r-lg); padding:18px 22px; text-decoration:none; transition:all .25s; margin-bottom:24px; }
+.nifty-link-banner:hover { border-color:var(--primary); background:linear-gradient(135deg,rgba(235,97,0,.14),rgba(124,58,237,.12)); }
+.nifty-link-banner-txt h4 { font-size:14px; font-weight:700; color:#fff; }
+.nifty-link-banner-txt p { font-size:12px; color:var(--muted); margin-top:2px; }
+.nifty-link-arrow { margin-left:auto; font-size:20px; color:var(--primary); }
+
+/* ──── RESPONSIVE ──── */
+@media(max-width:640px) {
+  .main { padding:20px 16px 60px; }
+  .prop-title-main { font-size:20px; }
+  .gallery-main { height:240px; }
+  .price-main { font-size:28px; }
+  .radar-wrap { flex-direction:column; }
+  .breadcrumb { display:none; }
+}
+</style>
+<!-- Leaflet for map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="load-ring"></div>
+  <div class="load-txt" id="loadTxt">AI LOADING...</div>
+</div>
+
+<!-- Neural BG -->
+<canvas id="neural"></canvas>
+<div id="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="scan-line"></div>
+
+<div class="wrap">
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="s-item"><div class="s-dot g"></div><span>SYSTEM ONLINE</span></div>
+    <div class="s-item">🏠 <span id="sbTitle">物件詳細</span></div>
+    <div class="s-item s-ml" id="clock"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-in">
+      <a href="index.html" class="back-btn">← 一覧に戻る</a>
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🏠</div>
+        <div class="logo-txt">nifty<em>AI</em></div>
+      </a>
+      <nav class="breadcrumb">
+        <a href="index.html">トップ</a><span>/</span>
+        <a href="index.html">賃貸</a><span>/</span>
+        <span id="bcArea">東京都</span><span>/</span>
+        <span id="bcTitle" style="color:#fff;">物件詳細</span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ══ PHOTO GALLERY ══ -->
+    <div class="gallery-section">
+      <div class="gallery-wrap">
+        <div class="gallery-skel" id="galSkel"></div>
+        <img id="galMain" class="gallery-main" src="" alt="物件写真" style="opacity:0">
+        <div class="gallery-badges">
+          <span class="badge badge-green" id="badgeKyodo">即入居可</span>
+          <span class="badge badge-blue" id="badgeAI">AI評価 ⭐ <span id="badgeScore">--</span>点</span>
+        </div>
+        <div class="gallery-score">
+          <div class="gallery-score-num" id="galScoreNum">--</div>
+          <div class="gallery-score-lbl">AI SCORE</div>
+        </div>
+      </div>
+      <div class="gallery-thumbs" id="galThumbs"></div>
+    </div>
+
+    <!-- ══ TWO COLUMN ══ -->
+    <div class="two-col">
+
+      <!-- LEFT: Main Content -->
+      <div>
+        <!-- Property Title -->
+        <div class="prop-head">
+          <div class="prop-status">
+            <span class="prop-status-txt" id="propPred">AI ANALYSIS</span>
+          </div>
+          <h1 class="prop-title-main" id="propTitle">物件名</h1>
+          <div class="prop-addr">📍 <span id="propAddr">住所</span></div>
+          <div class="prop-walk">🚃 <span id="propWalk">徒歩--分</span></div>
+        </div>
+
+        <!-- Nifty Link Banner -->
+        <a id="niftyBanner" href="#" target="_blank" class="nifty-link-banner">
+          <span style="font-size:26px;">🏢</span>
+          <div class="nifty-link-banner-txt">
+            <h4>ニフティ不動産で詳細を確認・問い合わせ</h4>
+            <p>実際の掲載ページで最新の空室状況・詳細情報を確認できます</p>
+          </div>
+          <span class="nifty-link-arrow">→</span>
+        </a>
+
+        <!-- AI Insight -->
+        <div class="sec-card">
+          <div class="sec-title">✦ AI分析コメント</div>
+          <div class="insight-box">
+            <div class="insight-label">NIFTY AI INSIGHT</div>
+            <div class="insight-txt" id="propInsight">分析中...</div>
+            <div class="pred-badge">📊 <span id="propPredBadge">--</span></div>
+          </div>
+        </div>
+
+        <!-- Access -->
+        <div class="sec-card">
+          <div class="sec-title">🚃 交通アクセス</div>
+          <div class="access-list" id="accessList">
+            <!-- JS fill -->
+          </div>
+        </div>
+
+        <!-- Equipment Tags -->
+        <div class="sec-card">
+          <div class="sec-title">🏗 設備・特徴</div>
+          <div class="equip-grid" id="equipGrid">
+            <!-- JS fill -->
+          </div>
+        </div>
+
+        <!-- Detail Specs -->
+        <div class="sec-card">
+          <div class="sec-title">📋 物件概要</div>
+          <table class="specs-table" id="specsTable">
+            <!-- JS fill -->
+          </table>
+        </div>
+
+        <!-- Map -->
+        <div class="sec-card">
+          <div class="sec-title">🗺 地図・周辺環境</div>
+          <div id="propMap"></div>
+        </div>
+
+        <!-- Agency Info -->
+        <div class="sec-card">
+          <div class="sec-title">🏢 取り扱い不動産会社</div>
+          <div class="agency-card" id="agencyCard">
+            <div class="agency-icon">🏢</div>
+            <div>
+              <div class="agency-name" id="agencyName">不動産会社名</div>
+              <div class="agency-info" id="agencyInfo">情報読み込み中...</div>
+              <div class="agency-tel" id="agencyTel"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Sidebar -->
+      <div>
+        <div class="sidebar-card">
+          <div class="price-main" id="sbPrice">--<span>万円</span></div>
+          <div class="price-mgmt" id="sbMgmt">管理費: --</div>
+          <div class="price-grid">
+            <div class="price-item">
+              <div class="price-lbl">間取り</div>
+              <div class="price-val" id="sbLayout">--</div>
+            </div>
+            <div class="price-item">
+              <div class="price-lbl">専有面積</div>
+              <div class="price-val" id="sbSize">-- ㎡</div>
+            </div>
+            <div class="price-item">
+              <div class="price-lbl">敷金</div>
+              <div class="price-val" id="sbShiki">--</div>
+            </div>
+            <div class="price-item">
+              <div class="price-lbl">礼金</div>
+              <div class="price-val" id="sbRei">--</div>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="handleInquiry()">📧 空室確認・見学予約（無料）</button>
+          <button class="btn-secondary" onclick="handleTel()">📞 電話で問い合わせ</button>
+          <button class="fav-btn" id="favBtn" onclick="toggleFav()">♡ お気に入りに追加</button>
+          <a id="sbNiftyLink" href="#" target="_blank" class="sidebar-nifty">ニフティ不動産で見る →</a>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="sec-card" style="padding:18px;">
+          <div class="sec-title" style="margin-bottom:14px;">📊 物件スペック</div>
+          <table class="specs-table" id="quickStats">
+            <!-- JS fill -->
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /two-col -->
+
+    <!-- ══ HAPPINESS CHART ══ -->
+    <div class="happiness-section sec-card">
+      <div class="sec-title">💫 幸福度チャート</div>
+      <div class="radar-wrap">
+        <svg id="radarChart" width="280" height="280"></svg>
+        <div class="radar-stats">
+          <div class="radar-score-total">
+            <div class="radar-score-num" id="totalScore">--</div>
+            <div class="radar-score-lbl">総合幸福度スコア</div>
+          </div>
+          <div class="radar-axis-list" id="axisBarList">
+            <!-- JS fill -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FUTURE DIARY ══ -->
+    <div class="diary-section sec-card">
+      <div class="diary-header">
+        <div class="diary-ai-icon">🤖</div>
+        <div class="diary-ai-txt">
+          <h3>AI未来日記</h3>
+          <p>AIがあなたのこの物件での暮らしを予測しました</p>
+        </div>
+      </div>
+      <div class="diary-cards" id="diaryCards">
+        <!-- JS fill -->
+      </div>
+    </div>
+
+    <!-- ══ NEARBY ══ -->
+    <div class="sec-card">
+      <div class="sec-title">🏠 近隣のおすすめ物件</div>
+      <div class="nearby-grid" id="nearbyGrid">
+        <!-- JS fill -->
+      </div>
+    </div>
+
+  </main>
+</div><!-- /wrap -->
+
+<script>
+/* ─────────────────────────────────────────────
+   PROPS DATA (same as index.html)
+───────────────────────────────────────────── */
+const PROPS = [
+  { id:1, title:"グランパーク千駄ヶ谷レジデンス", price:29.9, layout:"1LDK", size:46.12, walk:"徒歩5分", area:"渋谷区", score:92, reason:"駅近×上質空間", addr:"東京都渋谷区千駄ヶ谷", tags:["代々木駅徒歩5分","1LDK","オートロック","築浅"], insight:"代々木駅から徒歩5分の1LDK。千駄ヶ谷は新宿・渋谷どちらにもアクセスしやすい好立地。46㎡超の広々とした空間で、AI評価では「立地×コスパ」の総合スコアが区内トップクラス。", pred:"問い合わせ急増中", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_043e18ffcd11393a88c739d06e5c0be1/", lat:35.6820, lng:139.7118, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"15,000円", age:"築6年", floor:"4階/5階建", struct:"RC造", img:"https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=1200" },
+  { id:2, title:"アジールコート松濤", price:19.4, layout:"1LDK", size:33.56, walk:"徒歩7分", area:"渋谷区", score:88, reason:"高級住宅街", addr:"東京都渋谷区松濤", tags:["神泉駅近","松濤","高級住宅地","1LDK"], insight:"神泉駅から徒歩7分の松濤エリア。渋谷区は中でも特に高級住宅地として知られる松濤に位置し、静かで落ち着いた環境。この価格帯での松濤アドレスは非常に希少です。", pred:"希少立地・早めの行動推奈", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_3a946cd1d73e3bd8a1ff7cc9a187fdd1/", lat:35.6583, lng:139.6988, shiki:"2ヶ月", rei:"2ヶ月", mgmt:"10,000円", age:"築12年", floor:"3階/8階建", struct:"RC造", img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=1200" },
+  { id:3, title:"イプセ初台", price:13.8, layout:"1DK", size:25.03, walk:"徒歩7分", area:"渋谷区", score:82, reason:"渋谷区コスパ", addr:"東京都渋谷区初台", tags:["初台駅近","1DK","渋谷区","オートロック"], insight:"初台駅から徒歩7分の1DK。渋谷区で13.8万円はAI評価でコスパ上位ランク。新宿御苑や代々木公園にも自転車圏内で、都会と自然を両立できる好立地です。", pred:"渋谷区コスパランキング上位", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_3a09f83a4e533accb5bdd05afb987e0f/", lat:35.6797, lng:139.6908, shiki:"1ヶ月", rei:"なし", mgmt:"8,000円", age:"築9年", floor:"2階/7階建", struct:"RC造", img:"https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=1200" },
+  { id:4, title:"IPSE代々木上原", price:31.5, layout:"2LDK", size:69.07, walk:"徒歩2分", area:"渋谷区", score:95, reason:"駅2分の2LDK", addr:"東京都渋谷区上原", tags:["代々木上原駅徒歩2分","2LDK","69㎡","即入居可"], insight:"代々木上原駅から徒歩わずか2分。小田急・千代田線の2路線が使える超好立地の2LDK。69㎡の広さはカップル・ファミリーに最適。AIスコア95点は当サイト全体でも最上位クラス。", pred:"AI最高評価・即見学推奈", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_2a68fb37ff3a3be487ef38c882e00610/", lat:35.6661, lng:139.6834, shiki:"2ヶ月", rei:"2ヶ月", mgmt:"20,000円", age:"築3年", floor:"5階/9階建", struct:"RC造", img:"https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=1200" },
+  { id:5, title:"エタニティ富ヶ谷", price:32.0, layout:"1LDK", size:57.67, walk:"徒歩7分", area:"渋谷区", score:89, reason:"広々1LDK", addr:"東京都渋谷区富ヶ谷", tags:["代々木公園駅近","1LDK","57㎡","南向き"], insight:"代々木公園駅から徒歩7分の広々1LDK。富ヶ谷は代々木公園に隣接する閑静な住宅街でカフェ・飲食店も充実。57㎡の1LDKは同エリアでも特に広く、在宅ワーク環境にも最適です。", pred:"ハイグレード物件・空室希少", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_d0aa2ea751cf367dbd1a9c606fefce3d/", lat:35.6695, lng:139.6872, shiki:"2ヶ月", rei:"1ヶ月", mgmt:"18,000円", age:"築5年", floor:"3階/6階建", struct:"RC造", img:"https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&q=80&w=1200" },
+  { id:6, title:"LEGALAND恵比寿ANNEX", price:12.0, layout:"1K", size:18.82, walk:"徒歩9分", area:"渋谷区", score:85, reason:"恵比寿アドレス", addr:"東京都渋谷区恵比寿", tags:["恵比寿駅徒歩9分","1K","渋谷区","インターネット無料"], insight:"恵比寿駅から徒歩9分の1K。おしゃれな恵比寿アリアに12万円でアドレスを持てるのは希少。周辺の飲食店・ショッピング環境が充実し、単身者に人気のエリアです。", pred:"恵比寿アドレスの希少物件", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_51fad15b9a273d22b5fb4a888e233788/", lat:35.6467, lng:139.7102, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"5,000円", age:"築15年", floor:"3階/10階建", struct:"SRC造", img:"https://images.unsplash.com/photo-1556020685-ae41abfc9365?auto=format&fit=crop&q=80&w=1200" },
+  { id:7, title:"ラグディア北新宿", price:12.6, layout:"1K", size:25.41, walk:"徒歩9分", area:"新宿区", score:79, reason:"新宿区コスパ", addr:"東京都新宿区北新宿", tags:["東中野駅近","1K","25㎡","バストイレ別"], insight:"東中野駅から徒歩9分の1K。25㎡と同価格帯では広めの間取りで、バストイレ別。新宿区の中では比較的落ち着いた北新宿エリアに位置し、ターミナル駅へのアクセスも良好です。", pred:"新宿区内コスパ上位", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_eac22ddd75b936488fb32a453bf8c413/", lat:35.7015, lng:139.6977, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"5,000円", age:"築11年", floor:"4階/7階建", struct:"RC造", img:"https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=1200" },
+  { id:8, title:"グラナーデ目白御留山", price:18.5, layout:"1LDK", size:39.12, walk:"徒歩7分", area:"新宿区", score:83, reason:"文教エリア", addr:"東京都新宿区下落合", tags:["下落合駅近","1LDK","目白台","閑静"], insight:"下落合駅から徒歩7分の1LDK。目白御留山は皇室ゆかりの由緒ある高台エリア。周辺は学習院大学・椿山荘など文化的施設が多く、品格ある暮らしが実現できます。", pred:"文教エリアで安定人気", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_7a750445aad833e1b62c1be2fb474f81/", lat:35.7179, lng:139.6958, shiki:"2ヶ月", rei:"1ヶ月", mgmt:"12,000円", age:"築8年", floor:"2階/5階建", struct:"RC造", img:"https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200" },
+  { id:9, title:"第一辻ビル", price:27.4, layout:"1SLDK", size:62.14, walk:"徒歩4分", area:"新宿区", score:86, reason:"広い+駅近", addr:"東京都新宿区関口", tags:["江戸川橋駅徒歩4分","1SLDK","62㎡","神楽坂近"], insight:"江戸川橋駅から徒歩4分の1SLDK。62㎡超の広さにサービスルーム付きで実質2部屋使える間取り。神楽坂まで徒歩圏内で、落ち着いた文教地区の雰囲気も魅力です。", pred:"在宅ワーク・書斎需要に最適", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_6380fc0ea4553bed86d81ea54683744e/", lat:35.7090, lng:139.7334, shiki:"2ヶ月", rei:"2ヶ月", mgmt:"15,000円", age:"築20年", floor:"3階/4階建", struct:"SRC造", img:"https://images.unsplash.com/photo-1416331108676-a22ccb276e35?auto=format&fit=crop&q=80&w=1200" },
+  { id:10, title:"イプセ四谷", price:18.2, layout:"1DK", size:25.54, walk:"徒歩3分", area:"新宿区", score:91, reason:"駅3分の穴場", addr:"東京都新宿区四谷", tags:["四谷三丁目駅徒歩3分","1DK","丸ノ内線","駅近"], insight:"四谷三丁目駅から徒歩3分の超駅近1DK。丸ノ内線直通で新宿・東京駅どちらにも好アクセス。四谷は歴史的な街並みと利便性が共存し、ビジネスパーソンに特に人気です。", pred:"利便性スコア全物件中2位", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_f3dd0ba4246735a79a9d02bd4026bfa3/", lat:35.6875, lng:139.7272, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"10,000円", age:"築7年", floor:"5階/10階建", struct:"RC造", img:"https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=1200" },
+  { id:11, title:"ASTILE市谷柳町", price:16.1, layout:"1DK", size:35.24, walk:"徒歩1分", area:"新宿区", score:93, reason:"駅1分！激レア", addr:"東京都新宿区市谷柳町", tags:["牛込柳町駅徒歩1分","1DK","35㎡","即入居可"], insight:"牛込柳町駅から徒歩わずか1分の超好立地。徒歩1分物件は都内でも極めて希少で、AI評価では「利便性×価格」総合スコア93点。市谷・神楽坂エリアで16.1万円はコスパ抜群。", pred:"徒歩1分の激レア物件", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_5f6e0536ce743502ad20ab7937642030/", lat:35.6974, lng:139.7358, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"7,000円", age:"築4年", floor:"3階/8階建", struct:"RC造", img:"https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=1200" },
+  { id:12, title:"オアーゼ新宿西落合レジデンス", price:12.1, layout:"1K", size:25.71, walk:"徒歩6分", area:"新宿区", score:78, reason:"新宿区格安", addr:"東京都新宿区西落合", tags:["落合南長崎駅近","1K","25㎡","新宿区"], insight:"落合南長崎駅から徒歩6分の1K。新宿区で12万円台は希少なコスパ物件。西落合は静かな住宅地で落ち着いた生活環境が整っており、長期入居者の多い安定エリアです。", pred:"新宿区内割安ランキング上位", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_43de50a175e83aeaaab66e485a1c444d/", lat:35.7107, lng:139.6904, shiki:"1ヶ月", rei:"なし", mgmt:"5,000円", age:"築16年", floor:"1階/3階建", struct:"木造", img:"https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?auto=format&fit=crop&q=80&w=1200" },
+  { id:13, title:"GRANPASEO神楽坂II", price:13.6, layout:"1K", size:25.38, walk:"徒歩3分", area:"新宿区", score:87, reason:"神楽坂3分", addr:"東京都新宿区神楽坂", tags:["神楽坂駅徒歩3分","1K","神楽坂","築浅"], insight:"神楽坂駅から徒歩3分の1K。フランス人街としても知られるおしゃれな神楽坂エリアで13.6万円は高コスパ。飲食店・カフェが充実し、AI評価87点の人気物件です。", pred:"神楽坂アドレスでこの価格は希少", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_1f076cc5bad43a68ba8074ab10926ecf/", lat:35.7013, lng:139.7394, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"8,000円", age:"築2年", floor:"4階/8階建", struct:"RC造", img:"https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1200" },
+  { id:14, title:"D'sVARIE高田馬場レジデンス", price:13.8, layout:"1DK", size:23.64, walk:"徒歩6分", area:"新宿区", score:80, reason:"学生・社会人向", addr:"東京都新宿区下落合", tags:["下落合駅近","1DK","オートロック","宅配ボック"], insight:"下落合駅から徒歩6分の1DK。高田馬場エリアは早稲田大学など多くの学校が集まる活気ある街。飲食店・書店・スポーツジムなど生活施設が豊富で単身者に最適。", pred:"利便性×価格バランス良好", niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_7b7ed13dcbb336feacc6088559a2e8fd/", lat:35.7175, lng:139.6892, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"6,000円", age:"築10年", floor:"3階/7階建", struct:"RC造", img:"https://images.unsplash.com/photo-1574362848149-11496d93a7c7?auto=format&fit=crop&q=80&w=1200" },
+  { id:15, title:"ASK中目黒", price:54.0, layout:"3LDK", size:88.98, walk:"徒歩10分", area:"目黒区", score:84, reason:"中目黒の3LDK", addr:"東京都目黒区中目黒", tags:["祐天寺駅近","3LDK","88㎡","目黒区"], insight:"祐天寺駅から徒歩10分の3LDK。88.98㎡の広大な空間はファミリーやシェアにも最適。中目黒の洗練されたライフスタイルを享受できるプレミアムファミリー物件です。", pred:"ファミリー向けプレミアム物件", niftyUrl:"https://myhome.nifty.com/rent/tokyo/meguroku_ct/detail_137bd004ebfe3d4fb513bcb00abc6213/", lat:35.6426, lng:139.7003, shiki:"2ヶ月", rei:"2ヶ月", mgmt:"25,000円", age:"築18年", floor:"2階/5階建", struct:"RC造", img:"https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&q=80&w=1200" },
+  { id:16, title:"チロル", price:40.0, layout:"3LDK", size:72.26, walk:"徒歩6分", area:"目黒区", score:88, reason:"自由が丘の3LDK", addr:"東京都目黒区自由が丘", tags:["自由が丘駅徒歩6分","3LDK","72㎡","目黒区"], insight:"自由が丘駅から徒歩6分の3LDK。全国的に人気の自由が丘に位置し、72㎡の広さも魅力。AI分析では「住みたい街」上位エリアのファミリー物件として高評価。", pred:"自由が丘ファミリー向け人気物件", niftyUrl:"https://myhome.nifty.com/rent/tokyo/meguroku_ct/detail_5540b2a7cd3537fc936250179c5dc9ae/", lat:35.6076, lng:139.6682, shiki:"2ヶ月", rei:"2ヶ月", mgmt:"20,000円", age:"築14年", floor:"3階/6階建", struct:"RC造", img:"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=1200" },
+  { id:17, title:"アーバンフロント日暮里", price:11.2, layout:"1K", size:20.22, walk:"徒歩8分", area:"荒川区", score:76, reason:"3路線アクセス", addr:"東京都荒川区東日暮里", tags:["日暮里駅徒歩8分","1K","山手線","日暮里舎人ライナー"], insight:"日暮里駅から徒歩8分の1K。山手線・京成線・日暮里舎人ライナーの3路線が利用可能な交通利便性の高さが特徴。AI評価ではこの価格帯での都内コスパ上位物件に認定。", pred:"交通利便性スコア高評価", niftyUrl:"https://myhome.nifty.com/rent/tokyo/arakawaku_ct/detail_149b3fb79b11313d83434aa81471a5cc/", lat:35.7275, lng:139.7713, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"5,000円", age:"築13年", floor:"4階/9階建", struct:"RC造", img:"https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&q=80&w=1200" },
+  { id:18, title:"RELUXIA方南町II", price:10.1, layout:"1R", size:20.69, walk:"徒歩8分", area:"杉並区", score:75, reason:"10万円台の穴場", addr:"東京都杉並区方南", tags:["方南町駅徒歩8分","1R","丸ノ内線","始発駅"], insight:"方南町駅から徒歩8分の1R。杉並区で10万円台は都内でも希少なコスパ物件。方南町は丸ノ内線の始発駅で座って通勤できる利点があり、静かな住宅地として生活環境も良好。", pred:"始発駅エリアで穴場物件", niftyUrl:"https://myhome.nifty.com/rent/tokyo/suginamiku_ct/detail_06b061dae17331e2ab70a0b5d5ec726b/", lat:35.6954, lng:139.6584, shiki:"1ヶ月", rei:"なし", mgmt:"4,000円", age:"築9年", floor:"2階/4階建", struct:"RC造", img:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=1200" },
+  { id:19, title:"ルフォンリヴェント板橋西台", price:16.1, layout:"1SLDK", size:35.7, walk:"徒歩9分", area:"板橋区", score:80, reason:"S付きで広々", addr:"東京都板橋区西台", tags:["西台駅徒歩9分","1SLDK","35㎡","サービスルーム"], insight:"西台駅から徒歩9分の1SLDK。サービスルーム付きで実質2部屋として使用可能。板橋区は都心より家賃が抑えられるエリアで、16.1万円でこの広さは高いコスパを誇ります。", pred:"在宅ワーク需要で人気上昇中", niftyUrl:"https://myhome.nifty.com/rent/tokyo/itabashiku_ct/detail_0718994963c630cebe45fb29c0fadd4e/", lat:35.7722, lng:139.6877, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"7,000円", age:"築7年", floor:"3階/7階建", struct:"RC造", img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=1200" },
+  { id:20, title:"シャーメゾン アレグリア", price:21.9, layout:"2LDK", size:70.96, walk:"徒歩17分", area:"大田区", score:74, reason:"広々2LDK格安", addr:"東京都大田区蒲田", tags:["蒲田駅徒歩17分","2LDK","70㎡","羽田空港近"], insight:"蒲田駅から徒歩17分の2LDK。70.96㎡の広さでこの価格は都内では希少なコスパ物件。羽田空港まで電車一本でアクセスでき、出張族にも人気のシャーメゾンブランド物件。", pred:"ファミリー向けコスパNo.1", niftyUrl:"https://myhome.nifty.com/rent/tokyo/otaku_ct/detail_be9039becc8e3d4caa1aa213814bb11c/", lat:35.5619, lng:139.7162, shiki:"1ヶ月", rei:"1ヶ月", mgmt:"10,000円", age:"築5年", floor:"1階/2階建", struct:"軽量鉄骨造", img:"https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=1200" }
+];
+
+/* ─────────────────────────────────────────────
+   EXTRA DATA per property
+───────────────────────────────────────────── */
+const EXTRA = {
+  1:  { equip:["バストイレ別","オートロック","宅配ボックス","浴室乾燥機","フローリング","エレベーター","温水洗浄便座","追焚機能","システムキッチン","ネット無料","南向き","24hゴミ出し可"],
+        access:[{line:"JR山手線",sta:"代々木駅",walk:"歩5分"},{line:"東京メトロ副都心線",sta:"北参道駅",walk:"歩7分"},{line:"小田急線",sta:"南新宿駅",walk:"歩11分"}],
+        agency:{name:"スタートライン東京ソリューションセンター",addr:"東京都中央区築地2-10-6",tel:"03-5547-8234",hours:"10:00〜19:00（年中無休）"} },
+  default: { equip:["バストイレ別","オートロック","宅配ボックス","フローリング","エレベーター","浴室乾燥機","インターネット無料","オートバス","南向き","24hゴミ出し可"],
+             access:[{line:"各線",sta:"最寄り駅",walk:"歩圏内"}],
+             agency:{name:"ニフティ不動産取り扱い会社",addr:"東京都内",tel:"0120-XXX-XXX",hours:"10:00〜19:00"} }
+};
+
+function getExtra(id) { return EXTRA[id] || EXTRA.default; }
+
+/* ─────────────────────────────────────────────
+   HAPPINESS AXES
+───────────────────────────────────────────── */
+function getHappinessAxes(p) {
+  const walkMin = parseInt(p.walk) || 10;
+  const walkScore = Math.max(20, 100 - walkMin * 7);
+  return [
+    { name:"駅近さ",   val: walkScore,                         color:"#1a8cff" },
+    { name:"静かさ",   val: p.area==="渋谷区"? 72 : p.area==="新宿区"? 65 : 85, color:"#56b3b4" },
+    { name:"コスパ",   val: Math.min(98, Math.round((30/p.price)*100*0.6+30)), color:"#eb6100" },
+    { name:"日当たり", val: 55 + (p.id % 5) * 9,              color:"#f59e0b" },
+    { name:"治安",     val: p.area==="渋谷区"||p.area==="目黒区"? 88 : p.area==="大田区"||p.area==="荒川区"? 72 : 80, color:"#059669" },
+    { name:"生活利便性",val: Math.min(96, p.score + 3),        color:"#7c3aed" },
+  ];
+}
+
+/* ─────────────────────────────────────────────
+   FUTURE DIARY
+───────────────────────────────────────────── */
+function getDiary(p) {
+  const templates = [
+    {
+      period:"入居1ヶ月後", cls:"m1", emoji:"✨",
+      text(p) { return `今日でこの部屋に来て1ヶ月。最初は${p.addr.replace("東京都","")}の街に慣れるかな…と不安もあったけど、${p.walk}のこの距離感、毎日の通勤がすでに習慣になってきた。\n\nキッチンで初めて料理を作った夜、窓の外の夜景を見ながら「ここに決めて正解だったな」と思った。AIが勧めてくれた理由、「${p.reason}」って言葉が今になってすごく腑に落ちる。`; },
+      tags:["引越し完了","新生活スタート","ご近所探索中"]
+    },
+    {
+      period:"入居6ヶ月後", cls:"m6", emoji:"🌱",
+      text(p) { return `半年が経つのは早いもので、この街での暮らしがすっかり「日常」になった。\n\n近所のお気に入りのカフェができて、週末はそこでリモートワークをするのが実番になった。${p.layout}の間取り、最初は広すぎるかなと思ったけど今では全然足りないくらい充実してる。お気に入りの家具も揃って、やっとこの部屋が「自分の空間」になってきた感じ。`; },
+      tags:["生活リズム確立","お気に入りの場所発見","模様替え完了"]
+    },
+    {
+      period:"入居1年後", cls:"m12", emoji:"🏆",
+      text(p) { return `あっという間の1年。更新の書類が届いて、迷わずサインした。\n\n${p.addr.replace("東京都","")}での暮らしはAIの言っていた通りだった。幸福度チャートの「${['生活利便性','コスパ','駅近さ','静かさ','治安','日当たり'][p.id%6]}」が特に実感できた1年。来年はもう少し部屋をアップデートしたい。住み続けることで見えてくる街の良さ、それがここには確かにある。`; },
+      tags:["1年記念日","契約更新決定","ここが好きになった"]
+    }
+  ];
+  return templates;
+}
+
+/* ─────────────────────────────────────────────
+   NEURAL NET BG
+───────────────────────────────────────────── */
+const nc = document.getElementById('neural');
+const nx = nc.getContext('2d');
+let particles = [];
+function initNeural() {
+  nc.width = window.innerWidth; nc.height = window.innerHeight; particles = [];
+  const n = Math.min(60, Math.floor(nc.width * nc.height / 20000));
+  for (let i=0;i<n;i++) particles.push({ x:Math.random()*nc.width, y:Math.random()*nc.height, vx:(Math.random()-.5)*.28, vy:(Math.random()-.5)*.28, r:Math.random()*2+.6, hue:Math.random()<.55?'orange':'blue' });
+}
+function drawNeural() {
+  nx.clearRect(0,0,nc.width,nc.height);
+  particles.forEach(p => {
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>nc.width) p.vx*=-1;
+    if(p.y<0||p.y>nc.height) p.vy*=-1;
+    nx.beginPath(); nx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    nx.fillStyle = p.hue==='orange' ? 'rgba(235,97,0,.45)' : 'rgba(26,140,255,.38)'; nx.fill();
+  });
+  for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++) {
+    const dx=particles[j].x-particles[i].x, dy=particles[j].y-particles[i].y, d=Math.hypot(dx,dy);
+    if(d<130) { nx.beginPath(); nx.moveTo(particles[i].x,particles[i].y); nx.lineTo(particles[j].x,particles[j].y); const a=(1-d/130)*.12; nx.strokeStyle=`rgba(100,160,255,${a})`; nx.lineWidth=.6; nx.stroke(); }
+  }
+  requestAnimationFrame(drawNeural);
+}
+
+/* ─────────────────────────────────────────────
+   RADAR CHART (D3)
+───────────────────────────────────────────── */
+function drawRadar(axes) {
+  const svg = d3.select('#radarChart');
+  svg.selectAll('*').remove();
+
+  const W = 280, H = 280, cx = W/2, cy = H/2, R = 100;
+  const N = axes.length;
+  const levels = 5;
+
+  const angleSlice = Math.PI * 2 / N;
+
+  // Grid circles
+  for (let l = 1; l <= levels; l++) {
+    const r = R * l / levels;
+    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', r)
+      .attr('fill','none').attr('stroke','rgba(255,255,255,0.07)').attr('stroke-width',1);
+  }
+
+  // Axis lines
+  axes.forEach((ax, i) => {
+    const angle = angleSlice * i - Math.PI / 2;
+    const x = cx + R * Math.cos(angle);
+    const y = cy + R * Math.sin(angle);
+    svg.append('line').attr('x1',cx).attr('y1',cy).attr('x2',x).attr('y2',y)
+      .attr('stroke','rgba(255,255,255,0.1)').attr('stroke-width',1);
+
+    // Labels
+    const lx = cx + (R + 22) * Math.cos(angle);
+    const ly = cy + (R + 22) * Math.sin(angle);
+    svg.append('text').attr('x',lx).attr('y',ly)
+      .attr('text-anchor','middle').attr('dominant-baseline','middle')
+      .attr('fill','rgba(180,200,240,0.8)').attr('font-size','11px')
+      .attr('font-family','Noto Sans JP, Inter, sans-serif')
+      .text(ax.name);
+  });
+
+  // Data polygon
+  const points = axes.map((ax, i) => {
+    const angle = angleSlice * i - Math.PI / 2;
+    const r = R * ax.val / 100;
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+  });
+
+  const pathStr = points.map((p,i) => `${i===0?'M':'L'}${p[0]},${p[1]}`).join(' ') + ' Z';
+
+  svg.append('path').attr('d', pathStr)
+    .attr('fill', 'rgba(235,97,0,0.15)')
+    .attr('stroke', '#eb6100')
+    .attr('stroke-width', 2)
+    .attr('filter', 'drop-shadow(0 0 6px rgba(235,97,0,0.5))');
+
+  // Dots
+  points.forEach((pt, i) => {
+    svg.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 4)
+      .attr('fill', axes[i].color)
+      .attr('stroke', 'rgba(255,255,255,0.5)')
+      .attr('stroke-width', 1.5)
+      .attr('filter', `drop-shadow(0 0 4px ${axes[i].color})`);
+  });
+}
+
+/* ─────────────────────────────────────────────
+   MAIN INIT
+───────────────────────────────────────────── */
+let currentProp = null;
+let favorites = JSON.parse(localStorage.getItem('nifty_graph_fav') || '[]');
+
+function init() {
+  const params = new URLSearchParams(location.search);
+  const id = parseInt(params.get('id')) || 1;
+  const p = PROPS.find(x => x.id === id) || PROPS[0];
+  currentProp = p;
+
+  // Page title
+  document.title = `${p.title} — ニフティ不動産AI`;
+  document.getElementById('sbTitle').textContent = p.title;
+  document.getElementById('bcArea').textContent = p.area;
+  document.getElementById('bcTitle').textContent = p.title;
+
+  // Header
+  document.getElementById('propTitle').textContent = p.title;
+  document.getElementById('propAddr').textContent = p.addr;
+  document.getElementById('propWalk').textContent = p.walk;
+  document.getElementById('propPred').textContent = p.pred;
+  document.getElementById('propInsight').textContent = p.insight;
+  document.getElementById('propPredBadge').textContent = p.pred;
+
+  // Nifty link
+  document.getElementById('niftyBanner').href = p.niftyUrl;
+  document.getElementById('sbNiftyLink').href = p.niftyUrl;
+
+  // Sidebar
+  document.getElementById('sbPrice').innerHTML = `${p.price}<span>万円</span>`;
+  document.getElementById('sbMgmt').textContent = `管理費：${p.mgmt || '別途'}`;
+  document.getElementById('sbLayout').textContent = p.layout;
+  document.getElementById('sbSize').textContent = `${p.size} ㎡`;
+  document.getElementById('sbShiki').textContent = p.shiki || '1ヶ月';
+  document.getElementById('sbRei').textContent = p.rei || '1ヶ月';
+
+  // Scores
+  document.getElementById('badgeScore').textContent = p.score;
+  document.getElementById('galScoreNum').textContent = p.score;
+
+  // Fav button
+  updateFavBtn();
+
+  // Photo gallery
+  const galMain = document.getElementById('galMain');
+  const galSkel = document.getElementById('galSkel');
+  galMain.src = p.img;
+  galMain.onload = () => { galMain.style.opacity = '1'; galSkel.style.display = 'none'; };
+  galMain.onerror = () => { galMain.src = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=1200'; };
+
+  // Thumbnails (use unsplash variants for demo)
+  const thumbImgs = [p.img,
+    'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&q=80&w=200',
+    'https://images.unsplash.com/photo-1556020685-ae41abfc9365?auto=format&fit=crop&q=80&w=200',
+    'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=200',
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=200',
+  ];
+  const thumbsEl = document.getElementById('galThumbs');
+  thumbImgs.forEach((src, i) => {
+    const img = document.createElement('img');
+    img.className = 'thumb' + (i===0 ? ' active' : '');
+    img.src = src;
+    img.onclick = () => {
+      galMain.style.opacity='0';
+      setTimeout(() => { galMain.src = src; galMain.style.opacity='1'; }, 200);
+      thumbsEl.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+      img.classList.add('active');
+    };
+    thumbsEl.appendChild(img);
+  });
+
+  // Access list
+  const ex = getExtra(id);
+  const accessEl = document.getElementById('accessList');
+  ex.access.forEach(a => {
+    accessEl.innerHTML += `
+      <div class="access-item">
+        <span class="access-icon">🚃</span>
+        <div>
+          <div class="access-line">${a.line}</div>
+          <div class="access-station">${a.sta}</div>
+        </div>
+        <div class="access-walk">${a.walk}</div>
+      </div>`;
+  });
+
+  // Equipment tags
+  const equipEl = document.getElementById('equipGrid');
+  const highlights = ["オートロック","宅配ボックス","ネット無料","追焚機能","浴室乾燥機","南向き","インターネット無料"];
+  ex.equip.forEach(e => {
+    const hi = highlights.includes(e);
+    equipEl.innerHTML += `<span class="equip-tag${hi?' highlight':''}">${e}</span>`;
+  });
+
+  // Specs table
+  const specsEl = document.getElementById('specsTable');
+  const specRows = [
+    ["所在地", p.addr],
+    ["交通", p.tags[0] || p.walk],
+    ["間取り", `${p.layout}（専有面積 ${p.size}㎡）`],
+    ["築年月", p.age || "築年不明"],
+    ["階数/階建", p.floor || "詳細は要確認"],
+    ["建物構造", p.struct || "RC造"],
+    ["敷金", p.shiki || "1ヶ月"],
+    ["礼金", p.rei || "1ヶ月"],
+    ["管理費等", p.mgmt || "要確認"],
+    ["入居可能時期", "即時"],
+    ["取引態様", "仲介"],
+    ["契約期間", "2年（普通借家）"],
+    ["保証会社", "加入要（初回：賃料の50%）"],
+    ["その他", `情報公開日：${new Date().toLocaleDateString('ja-JP')} / <a href="${p.niftyUrl}" target="_blank">ニフティ不動産掲載ページ ↗</a>`],
+  ];
+  specsEl.innerHTML = specRows.map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+  // Quick stats (sidebar)
+  const qsEl = document.getElementById('quickStats');
+  const qsRows = [
+    ["面積", `${p.size}㎡`],
+    ["階", p.floor ? p.floor.split('/')[0] : "-"],
+    ["築年", p.age || "-"],
+    ["構造", p.struct || "RC造"],
+    ["向き", p.tags.find(t=>t.includes("向き")) || "要確認"],
+  ];
+  qsEl.innerHTML = qsRows.map(([k,v]) => `<tr><th style="width:60px;font-size:11px;">${k}</th><td style="font-size:13px;">${v}</td></tr>`).join('');
+
+  // Agency
+  document.getElementById('agencyName').textContent = ex.agency.name;
+  document.getElementById('agencyInfo').innerHTML = `${ex.agency.addr}<br>営業時間：${ex.agency.hours}`;
+  document.getElementById('agencyTel').textContent = ex.agency.tel;
+
+  // Map
+  const lat = p.lat || 35.69;
+  const lng = p.lng || 139.70;
+  const map = L.map('propMap', { zoomControl:true, scrollWheelZoom:false }).setView([lat, lng], 15);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; <a href="https://carto.com/">CARTO</a>', maxZoom:19
+  }).addTo(map);
+  const icon = L.divIcon({ className:'', html:`<div style="width:36px;height:36px;background:linear-gradient(135deg,#eb6100,#f97316);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 0 12px rgba(235,97,0,.8);"></div>`, iconSize:[36,36], iconAnchor:[18,36] });
+  L.marker([lat, lng], { icon }).addTo(map).bindPopup(`<b>${p.title}</b><br>${p.addr}`).openPopup();
+
+  // Happiness chart
+  const axes = getHappinessAxes(p);
+  const total = Math.round(axes.reduce((s,a)=>s+a.val,0)/axes.length);
+  document.getElementById('totalScore').textContent = total;
+  drawRadar(axes);
+
+  // Axis bars
+  const barEl = document.getElementById('axisBarList');
+  axes.forEach(ax => {
+    barEl.innerHTML += `
+      <div class="radar-axis-item">
+        <span class="radar-axis-name">${ax.name}</span>
+        <div class="radar-axis-bar"><div class="radar-axis-fill" style="width:0%;background:${ax.color};" data-target="${ax.val}"></div></div>
+        <span class="radar-axis-val" style="color:${ax.color};">${ax.val}</span>
+      </div>`;
+  });
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.radar-axis-fill').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  }, 400);
+
+  // Diary
+  const diary = getDiary(p);
+  const diaryEl = document.getElementById('diaryCards');
+  diary.forEach((d, i) => {
+    const txt = d.text(p).replace(/\n\n/g,'<br><br>');
+    const dateObj = new Date();
+    dateObj.setMonth(dateObj.getMonth() + [1,6,12][i]);
+    const dateStr = dateObj.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+    diaryEl.innerHTML += `
+      <div class="diary-card ${d.cls}">
+        <div class="diary-card-header">
+          <span class="diary-date">${dateStr}</span>
+          <span class="diary-period">${d.period}</span>
+          <span class="diary-emoji">${d.emoji}</span>
+        </div>
+        <div class="diary-txt">${txt}</div>
+        <div class="diary-tags">${d.tags.map(t=>`<span class="diary-tag">#${t}</span>`).join('')}</div>
+      </div>`;
+  });
+
+  // Nearby properties
+  const nearby = PROPS.filter(x => x.id !== p.id && x.area === p.area).slice(0,4);
+  const nearbyEl = document.getElementById('nearbyGrid');
+  if (nearby.length === 0) {
+    PROPS.filter(x => x.id !== p.id).slice(0,4).forEach(x => renderNearby(nearbyEl, x));
+  } else {
+    nearby.forEach(x => renderNearby(nearbyEl, x));
+  }
+
+  // Loading done
+  setTimeout(() => document.getElementById('loading').classList.add('out'), 900);
+}
+
+function renderNearby(el, x) {
+  el.innerHTML += `
+    <a class="nearby-card" href="detail.html?id=${x.id}">
+      <img class="nearby-img" src="${x.img}" alt="${x.title}" onerror="this.src='https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=400'">
+      <div class="nearby-info">
+        <div class="nearby-price">${x.price}万円</div>
+        <div class="nearby-title">${x.title}</div>
+        <div class="nearby-meta">${x.layout} · ${x.walk} · ${x.area}</div>
+      </div>
+    </a>`;
+}
+
+function updateFavBtn() {
+  if (!currentProp) return;
+  const btn = document.getElementById('favBtn');
+  const isFav = favorites.includes(currentProp.id);
+  btn.textContent = isFav ? '♥ お気に入り済み' : '♡ お気に入りに追加';
+  btn.classList.toggle('on', isFav);
+}
+
+function toggleFav() {
+  if (!currentProp) return;
+  const idx = favorites.indexOf(currentProp.id);
+  if (idx > -1) { favorites.splice(idx, 1); }
+  else { favorites.push(currentProp.id); }
+  localStorage.setItem('nifty_graph_fav', JSON.stringify(favorites));
+  updateFavBtn();
+}
+
+function handleInquiry() {
+  if (currentProp) window.open(currentProp.niftyUrl, '_blank');
+}
+function handleTel() {
+  if (currentProp) {
+    const ex = getExtra(currentProp.id);
+    alert(`📞 ${ex.agency.name}\n${ex.agency.tel}\n${ex.agency.hours}`);
+  }
+}
+
+// Clock
+function tick() {
+  const el = document.getElementById('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('ja-JP', {hour12:false});
+}
+
+// Init
+window.addEventListener('load', () => {
+  initNeural(); drawNeural();
+  init();
+  tick(); setInterval(tick, 1000);
+});
+window.addEventListener('resize', () => { initNeural(); });
+</script>
+</body>
+</html>
