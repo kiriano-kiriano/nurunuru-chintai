@@ -1221,8 +1221,8 @@ const PROPS = [
     addr:"東京都渋谷区松濤",
     img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800",
     tags:["神泉駅近","松濤","高級住宅地","1LDK"],
-    insight:"神泉駅から徒歩7分の松濤エリア。渋谷区の中でも特に高級住宅地として知られる松濤に位置し、静かで落ち着いた環境。この価格帯での松濤アドレスは非常に希少です。",
-    pred:"希少立地・早めの行動推奨",
+    insight:"神泉駅から徒歩7分の松濤エリア。渋谷区は中でも特に高級住宅地として知られる松濤に位置し、静かで落ち着いた環境。この価格帯での松濤アドレスは非常に希少です。",
+    pred:"希少立地・早めの行動推奈",
     niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_3a946cd1d73e3bd8a1ff7cc9a187fdd1/"
   },
   {
@@ -1233,7 +1233,7 @@ const PROPS = [
     addr:"東京都渋谷区初台",
     img:"https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800",
     tags:["初台駅近","1DK","渋谷区","オートロック"],
-    insight:"初台駅から徒歩7分の1DK。渋谷区で13.8万円はAI評価でコスパ上位ランク。新宿御苑や代々木公園にも自転車圏内で、都会と自然を両立できる好立地です。",
+    insight:"初台駅から徒歩7分の1DK。渋谷区で13.8万円ッったAI評価でコスパ上位ランク。新宿御苑や代々木公園にも自転車圏内で、都会と自然を両立できる好立地です。",
     pred:"渋谷区コスパランキング上位",
     niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_3a09f83a4e533accb5bdd05afb987e0f/"
   },
@@ -1246,7 +1246,7 @@ const PROPS = [
     img:"https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=800",
     tags:["代々木上原駅徒歩2分","2LDK","69㎡","即入居可"],
     insight:"代々木上原駅から徒歩わずか2分。小田急・千代田線の2路線が使える超好立地の2LDK。69㎡の広さはカップル・ファミリーに最適。AIスコア95点は当サイト全体でも最上位クラス。",
-    pred:"AI最高評価・即見学推奨",
+    pred:"AI最高評価・即見学推奈",
     niftyUrl:"https://myhome.nifty.com/rent/tokyo/shibuyaku_ct/detail_2a68fb37ff3a3be487ef38c882e00610/"
   },
   {
@@ -1293,7 +1293,7 @@ const PROPS = [
     addr:"東京都新宿区下落合",
     img:"https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=800",
     tags:["下落合駅近","1LDK","目白台","閑静"],
-    insight:"下落合駅から徒歩7分の1LDK。目白御留山は皇室ゆかりの由緒ある高台エリア。周辺は学習院大学・椿山荘など文化的施設が多く、品格ある暮らしが実現できます。",
+    insight:"下落合駅から徒歩7分の1LDK。目白御留山は皇室ゆかりの畑緒ある高台エリア。周辺は学習院大学・椿山荘など文化的施設が多く、品格ある暮らしが実現できます。",
     pred:"文教エリアで安定人気",
     niftyUrl:"https://myhome.nifty.com/rent/tokyo/shinjukuku_ct/detail_7a750445aad833e1b62c1be2fb474f81/"
   },
@@ -1712,7 +1712,7 @@ const LINES = [
   { name:'中央線',     color:'#e15f00', stations:['新宿','大久保','東中野','中野','高円寺','阿佐ヶ谷','荻窪','西荻窪'] },
   { name:'東急東横線', color:'#e60012', stations:['渋谷','代官山','中目黒','祐天寺','学芸大学','都立大学'] },
   { name:'小田急線',   color:'#0072bc', stations:['新宿','参宮橋','代々木公園','代々木八幡','代々木上原'] },
-  { name:'京王線',     color:'#004097', stations:['新宿','笹塚','代田橋','明大前','下高井戸','桜上水'] },
+  { name:'京王線',     color:'#004097', stations:['新宿','笹塚','代田橋','明大前','下高井戹','桜上水'] },
   { name:'東急目黒線', color:'#00ac9b', stations:['目黒','不動前','武蔵小山','西小山','洗足','大岡山'] },
   { name:'東武東上線', color:'#f67a1e', stations:['池袋','北池袋','下板橋','大山','中板橋','ときわ台'] },
   { name:'京成線',     color:'#ee0011', stations:['日暮里','新三河島','町屋','千住大橋','京成関屋'] },
@@ -1865,6 +1865,10 @@ function useChip(txt) {
    MODAL
 ───────────────────────────────────────────── */
 function openModal(id) {
+  // ページ遷移で詳細ページへ
+  location.href = 'detail.html?id=' + id;
+}
+function openModal_legacy(id) {
   const p = PROPS.find(x => x.id === id);
   if (!p) return;
 
@@ -1924,7 +1928,7 @@ function toggleModalFav() {
   const nowFav = graphFavorites.includes(pid);
   btn.textContent = nowFav ? '♥' : '♡';
   btn.classList.toggle('on', nowFav);
-  // カードのfavボタンも同期
+  // カードのfavボタンを同期
   const cardFav = document.getElementById(`fav_${pid}`);
   if (cardFav) { cardFav.textContent = nowFav ? '♥' : '♡'; cardFav.style.color = nowFav ? '#f43f5e' : ''; }
   toast(nowFav ? '♥ お気に入りに追加しました！' : 'お気に入りから削除しました');
@@ -1932,425 +1936,6 @@ function toggleModalFav() {
 }
 
 function saveCondition() { toast('条件をAIに記憶させました！次回以降、優先的に提案します。'); }
-
-/* ─────────────────────────────────────────────
-   CHAT
-───────────────────────────────────────────── */
-const chatReplies = [
-  'なるほど！その条件で候補が見つかりました。上のカードから気になる物件を選んでみてください。',
-  '了解です！エリアや予算をもう少し教えていただければ、より精度の高い提案ができます。',
-  'その条件は人気が高いですね。現在の市場では早めに動くことをお勧めします！',
-  '良い選択肢だと思います！近隣エリアも候補に入れるとコスパの高い物件が見つかるかも。',
-  'その条件でniftyの詳細検索を使うと、さらに多くの物件が見つかります！',
-];
-let replyIdx = 0;
-
-function toggleChat() {
-  chatOpen = !chatOpen;
-  document.getElementById('chatPanel').classList.toggle('open', chatOpen);
-}
-
-function sendChat() {
-  const inp = document.getElementById('chatIn');
-  const msg = inp.value.trim();
-  if (!msg) return;
-  const box = document.getElementById('chatMsgs');
-  box.innerHTML += `<div class="msg user">${escHtml(msg)}</div>`;
-  inp.value = '';
-  const tid = 'typ_' + Date.now();
-  box.innerHTML += `<div class="msg ai" id="${tid}"><div class="dots"><span></span><span></span><span></span></div></div>`;
-  box.scrollTop = box.scrollHeight;
-  setTimeout(() => {
-    const el = document.getElementById(tid);
-    if (el) el.textContent = chatReplies[replyIdx++ % chatReplies.length];
-    box.scrollTop = box.scrollHeight;
-  }, 1100 + Math.random() * 700);
-}
-
-function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-/* ─────────────────────────────────────────────
-   TOAST
-───────────────────────────────────────────── */
-function toast(msg) {
-  const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(15,23,42,.97);backdrop-filter:blur(20px);border:1px solid rgba(235,97,0,.3);border-radius:14px;padding:12px 24px;font-size:13px;font-weight:600;color:#f1f5f9;z-index:9999;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);opacity:0;transition:all .3s;';
-  el.textContent = msg;
-  document.body.appendChild(el);
-  requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
-  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(16px)'; setTimeout(()=>el.remove(), 320); }, 2600);
-}
-
-function showMobileFilter() { toast('PCでフィルターをご利用ください'); }
-
-/* ─────────────────────────────────────────────
-   D3 FORCE-DIRECTED GRAPH
-───────────────────────────────────────────── */
-let d3Simulation, d3Svg, d3G, d3LinkSel, d3NodeSel;
-let graphFavorites = JSON.parse(localStorage.getItem('nifty_graph_fav') || '[]');
-let graphPins      = JSON.parse(localStorage.getItem('nifty_graph_pins') || '{}');
-
-function getLayoutCat(layout) {
-  if (/^1[RK]$/.test(layout)) return 'cat-1R';
-  if (/SLDK|1LDK|1DK/.test(layout)) return 'cat-1LDK';
-  return 'cat-2LDK';
-}
-function getPriceCat(price) {
-  if (price < 10) return 'price-low';
-  if (price < 20) return 'price-mid';
-  return 'price-high';
-}
-function getNodeColor(group) {
-  return { hub:'#eb6100', layout:'#1a8cff', price:'#10b981',
-           property:'#56b3b4', favorite:'#ec4899' }[group] || '#94a3b8';
-}
-
-function buildGraphData() {
-  const nodes = [], links = [];
-
-  // hub — big central node (matching reference "station" concept)
-  nodes.push({ id:'hub', label:'東京物件ネット', group:'hub', r:28 });
-
-  // layout cats
-  const layoutCats = [
-    { id:'cat-1R',   label:'1R・1K',      group:'layout' },
-    { id:'cat-1LDK', label:'1DK・1LDK',  group:'layout' },
-    { id:'cat-2LDK', label:'2LDK以上',    group:'layout' },
-  ];
-  layoutCats.forEach(n => { nodes.push({...n, r:16}); links.push({source:'hub', target:n.id, type:'category'}); });
-
-  // price cats
-  const priceCats = [
-    { id:'price-low',  label:'〜10万円',  group:'price' },
-    { id:'price-mid',  label:'10〜20万円', group:'price' },
-    { id:'price-high', label:'20万円〜',  group:'price' },
-  ];
-  priceCats.forEach(n => { nodes.push({...n, r:16}); links.push({source:'hub', target:n.id, type:'category'}); });
-
-  // property nodes
-  PROPS.forEach(p => {
-    const isFav = graphFavorites.includes(p.id);
-    nodes.push({ id:'prop-'+p.id, label:p.title, group: isFav ? 'favorite' : 'property',
-                 propId:p.id, r:12 });
-    links.push({source: getLayoutCat(p.layout), target:'prop-'+p.id, type:'relation'});
-    links.push({source: getPriceCat(p.price),   target:'prop-'+p.id, type:'relation'});
-  });
-
-  // dynamic favorite group node (like reference) — appears when favorites exist
-  if (graphFavorites.length > 0) {
-    nodes.push({ id:'cat-fav', label:'お気に入り', group:'favorite', r:20 });
-    links.push({ source:'hub', target:'cat-fav', type:'category' });
-    graphFavorites.forEach(favId => {
-      links.push({ source:'cat-fav', target:'prop-'+favId, type:'favorite' });
-    });
-  }
-
-  return { nodes, links };
-}
-
-function initD3Graph() {
-  const container = document.getElementById('graphContainer');
-  const svg = d3.select('#graphSvg');
-  svg.selectAll('*').remove();
-
-  const W = container.clientWidth || 480;
-  const H = container.clientHeight || 340;
-
-  // Defs: grid + glow filter
-  const defs = svg.append('defs');
-
-  // Orange-tinted grid for dark background
-  defs.append('pattern')
-    .attr('id','grid').attr('width',30).attr('height',30)
-    .attr('patternUnits','userSpaceOnUse')
-    .append('path').attr('d','M 30 0 L 0 0 0 30')
-    .attr('fill','none').attr('stroke','rgba(235,97,0,0.08)').attr('stroke-width','0.7');
-  svg.append('rect').attr('width','100%').attr('height','100%').attr('fill','url(#grid)');
-
-  // Glow filter
-  const f = defs.append('filter').attr('id','nodeGlow').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
-  f.append('feGaussianBlur').attr('stdDeviation','4').attr('result','blur');
-  const merge = f.append('feMerge');
-  merge.append('feMergeNode').attr('in','blur');
-  merge.append('feMergeNode').attr('in','SourceGraphic');
-
-  // Zoom group
-  d3G = svg.append('g').attr('class','zoom-g');
-
-  // Zoom behaviour
-  const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', e => {
-    d3G.attr('transform', e.transform);
-  });
-  svg.call(zoom);
-  svg.call(zoom.transform, d3.zoomIdentity.translate(W * 0.1, H * 0.1).scale(0.85));
-
-  // Link & node groups (links drawn first, under nodes)
-  d3LinkSel = d3G.append('g').attr('class','links');
-  d3NodeSel = d3G.append('g').attr('class','nodes');
-
-  d3Svg = svg;
-
-  const { nodes, links } = buildGraphData();
-
-  // Restore pinned positions
-  nodes.forEach(n => {
-    if (graphPins[n.id]) { n.fx = graphPins[n.id].x; n.fy = graphPins[n.id].y; }
-  });
-
-  // Simulation — tuned to match reference
-  d3Simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id)
-      .distance(d => d.type === 'category' ? 170 : 90)
-      .strength(0.55))
-    .force('charge', d3.forceManyBody().strength(-300))
-    .force('center', d3.forceCenter(W / 2, H / 2))
-    .force('collide', d3.forceCollide(d => d.r + 18))
-    .on('tick', ticked);
-
-  updateD3Graph(nodes, links);
-}
-
-function updateD3Graph(nodes, links) {
-  if (!d3G) return;
-
-  /* ── Links — join() pattern ── */
-  d3LinkSel.selectAll('line')
-    .data(links, d => (d.source.id || d.source) + '-' + (d.target.id || d.target))
-    .join(
-      enter => enter.append('line')
-        .attr('stroke', d => d.type === 'favorite' ? 'rgba(236,72,153,0.7)'
-                           : d.type === 'category'  ? 'rgba(235,97,0,0.45)'
-                                                    : 'rgba(255,255,255,0.12)')
-        .attr('stroke-width', d => d.type === 'category' ? 2 : 1)
-        .attr('stroke-dasharray', d => d.type === 'relation' ? '5 4' : null),
-      update => update,
-      exit => exit.remove()
-    );
-
-  /* ── Drag behaviour ── */
-  let _dragMoved = false;
-  const drag = d3.drag()
-    .on('start', (e, d) => {
-      _dragMoved = false;
-      if (!e.active) d3Simulation.alphaTarget(0.3).restart();
-      d.fx = d.x; d.fy = d.y;
-    })
-    .on('drag', (e, d) => {
-      _dragMoved = true;
-      d.fx = e.x; d.fy = e.y;
-    })
-    .on('end', (e, d) => {
-      if (!e.active) d3Simulation.alphaTarget(0);
-      if (_dragMoved) {
-        // pin in place — show pinned stroke (#64748b)
-        graphPins[d.id] = { x: d.fx, y: d.fy };
-        localStorage.setItem('nifty_graph_pins', JSON.stringify(graphPins));
-        d3.select(d._el).select('circle')
-          .attr('stroke', '#64748b')
-          .attr('stroke-width', 2);
-      }
-    });
-
-  /* ── Node groups — join() pattern ── */
-  const nodeJoin = d3NodeSel.selectAll('g.node')
-    .data(nodes, d => d.id)
-    .join(
-      enter => {
-        const g = enter.append('g').attr('class','node').style('cursor','pointer');
-
-        g.each(function(d) { d._el = this; }); // store DOM ref for drag-end stroke update
-
-        g.call(drag)
-          .on('dblclick', (e, d) => {
-            e.stopPropagation();
-            // unpin — restore floating stroke
-            d.fx = null; d.fy = null;
-            delete graphPins[d.id];
-            localStorage.setItem('nifty_graph_pins', JSON.stringify(graphPins));
-            d3Simulation.alphaTarget(0.2).restart();
-            d3.select(d._el).select('circle')
-              .attr('stroke', d.group === 'hub' ? '#ffffff' : 'rgba(255,255,255,0.6)')
-              .attr('stroke-width', d.group === 'hub' ? 3 : 1.5);
-          })
-          .on('click', (e, d) => {
-            if (_dragMoved) return;
-            if (d.propId) { openModal(d.propId); return; }
-            // Category / hub → filter list
-            if (d.group === 'hub') {
-              graphFilter = null;
-            } else if (d.group === 'layout') {
-              graphFilter = (graphFilter && graphFilter.cat === d.id) ? null : { type:'layout', cat:d.id };
-            } else if (d.group === 'price') {
-              graphFilter = (graphFilter && graphFilter.cat === d.id) ? null : { type:'price', cat:d.id };
-            } else if (d.group === 'favorite') {
-              graphFilter = (graphFilter && graphFilter.cat === d.id) ? null : { type:'favorite', cat:d.id };
-            }
-            updateGraphHighlight();
-            const gnEl = document.getElementById('graphNote');
-            if (gnEl) gnEl.textContent = graphFilter
-              ? `${d.label}で絞り込み中（再クリックで解除）`
-              : 'ノードをクリックして絞り込む | ドラッグでピン留め | ダブルクリックで解除';
-            render();
-          });
-
-        // Circle — stroke indicates pin state (white=floating, #64748b=pinned)
-        g.append('circle')
-          .attr('r', d => d.r)
-          .attr('fill', d => getNodeColor(d.group))
-          .attr('stroke', d => graphPins[d.id] ? '#64748b' : (d.group === 'hub' ? '#ffffff' : 'rgba(255,255,255,0.6)'))
-          .attr('stroke-width', d => graphPins[d.id] ? 2 : (d.group === 'hub' ? 3 : 1.5))
-          .attr('filter', d => d.group === 'hub' || d.group === 'favorite' ? 'url(#nodeGlow)' : null)
-          .on('mouseover', function(e, d) {
-            d3.select(this).attr('r', d.r + 4).attr('filter', 'url(#nodeGlow)');
-          })
-          .on('mouseout', function(e, d) {
-            d3.select(this).attr('r', d.r)
-              .attr('filter', d.group === 'hub' || d.group === 'favorite' ? 'url(#nodeGlow)' : null);
-          });
-
-        // Label — white fill with dark paint-order stroke for dark bg readability
-        g.append('text')
-          .attr('dy', d => d.group === 'hub' ? 4 : d.r + 13)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', d => d.group === 'hub' ? 11 : d.group === 'property' || d.group === 'favorite' ? 8 : 9)
-          .attr('font-weight', d => d.group === 'hub' ? '700' : '500')
-          .attr('fill', '#ffffff')
-          .attr('paint-order', 'stroke')
-          .attr('stroke', 'rgba(0,0,0,0.75)')
-          .attr('stroke-width', '2.5')
-          .style('text-shadow', '0px 1px 3px rgba(0,0,0,0.9)')
-          .text(d => d.label.length > 9 ? d.label.slice(0, 9) + '…' : d.label);
-
-        return g;
-      },
-      update => update,
-      exit => exit.remove()
-    );
-}
-
-function ticked() {
-  d3LinkSel.selectAll('line')
-    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
-  d3NodeSel.selectAll('g.node')
-    .attr('transform', d => `translate(${d.x},${d.y})`);
-}
-
-function updateGraphHighlight() {
-  if (!d3NodeSel) return;
-  d3NodeSel.selectAll('g.node circle')
-    .attr('stroke', d => {
-      // active filter: highlight selected cat node in orange
-      if (graphFilter && d.id === graphFilter.cat) return '#eb6100';
-      // pinned nodes: grey stroke
-      if (d.fx != null) return '#64748b';
-      // hub: bright white
-      return d.group === 'hub' ? '#ffffff' : 'rgba(255,255,255,0.6)';
-    })
-    .attr('stroke-width', d => {
-      if (graphFilter && d.id === graphFilter.cat) return 3.5;
-      if (d.fx != null) return 2;
-      return d.group === 'hub' ? 3 : 1.5;
-    })
-    .attr('opacity', d => {
-      if (!graphFilter) return 1;
-      if (d.id === graphFilter.cat || d.group === 'hub') return 1;
-      if (d.propId) {
-        const p = PROPS.find(x => x.id === d.propId);
-        if (p) {
-          let match = false;
-          if (graphFilter.type === 'layout') match = getLayoutCat(p.layout) === graphFilter.cat;
-          else if (graphFilter.type === 'price') match = getPriceCat(p.price) === graphFilter.cat;
-          else if (graphFilter.type === 'favorite') match = graphFavorites.includes(p.id);
-          return match ? 1 : 0.25;
-        }
-      }
-      // other category nodes
-      return (d.group === graphFilter.type && d.id !== graphFilter.cat) ? 0.25 : 0.55;
-    });
-}
-
-/* ─────────────────────────────────────────────
-   NEURAL NETWORK BG
-───────────────────────────────────────────── */
-const nc = document.getElementById('neural');
-const nx = nc.getContext('2d');
-let particles = [];
-
-function initNeural() {
-  nc.width = window.innerWidth; nc.height = window.innerHeight;
-  particles = [];
-  const n = Math.min(70, Math.floor(window.innerWidth * window.innerHeight / 18000));
-  for (let i=0;i<n;i++) particles.push({
-    x: Math.random()*nc.width, y: Math.random()*nc.height,
-    vx:(Math.random()-.5)*.32, vy:(Math.random()-.5)*.32, r:Math.random()*2+.7,
-    hue: Math.random() < 0.55 ? 'orange' : 'blue'
-  });
-}
-
-function drawNeural() {
-  nx.clearRect(0,0,nc.width,nc.height);
-  particles.forEach(p => {
-    p.x+=p.vx; p.y+=p.vy;
-    if(p.x<0||p.x>nc.width) p.vx*=-1;
-    if(p.y<0||p.y>nc.height) p.vy*=-1;
-    nx.beginPath(); nx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    nx.fillStyle = p.hue==='orange' ? 'rgba(235,97,0,.5)' : 'rgba(26,140,255,.4)';
-    nx.fill();
-  });
-  for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++) {
-    const dx=particles[j].x-particles[i].x, dy=particles[j].y-particles[i].y;
-    const d=Math.hypot(dx,dy);
-    if(d<140) {
-      nx.beginPath(); nx.moveTo(particles[i].x,particles[i].y); nx.lineTo(particles[j].x,particles[j].y);
-      const alpha=(1-d/140)*.13;
-      nx.strokeStyle = (particles[i].hue==='orange'&&particles[j].hue==='orange')
-        ? `rgba(235,97,0,${alpha})`
-        : `rgba(100,160,255,${alpha})`;
-      nx.lineWidth=.65; nx.stroke();
-    }
-  }
-  requestAnimationFrame(drawNeural);
-}
-
-/* ─────────────────────────────────────────────
-   CLOCK
-───────────────────────────────────────────── */
-function tick() {
-  const s = new Date().toLocaleTimeString('ja-JP',{hour12:false});
-  const el = document.getElementById('clock');
-  if(el) el.textContent = `SYS ${s}`;
-}
-
-/* ─────────────────────────────────────────────
-   INIT
-───────────────────────────────────────────── */
-window.addEventListener('load', () => {
-  // loading txt cycle
-  const txts = ['AI INITIALIZING...','NEURAL NET READY','DATA LINKING...','NIFTY CONNECTED ✓'];
-  let ti=0;
-  const ltxt = document.getElementById('loadTxt');
-  const ltint = setInterval(()=>{ if(++ti<txts.length) ltxt.textContent=txts[ti]; }, 320);
-
-  setTimeout(()=>{
-    clearInterval(ltint);
-    document.getElementById('loading').classList.add('out');
-    refreshAiMsg();
-  }, 1350);
-
-  initD3Graph();
-  initNeural(); drawNeural();
-  renderBreadcrumb();
-  render();
-  tick(); setInterval(tick, 1000);
-
-  // init display
-  maxPrice = +document.getElementById('priceR').value;
-  document.getElementById('prLbl').textContent = `${maxPrice}万円`;
-  document.getElementById('szLbl').textContent = `${document.getElementById('sizeR').value}㎡`;
-});
-
-window.addEventListener('resize', ()=>{ initNeural(); initD3Graph(); });
 </script>
 </body>
 </html>
